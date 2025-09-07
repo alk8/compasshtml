@@ -6,12 +6,8 @@
   <title>Компас</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 16px; background: #101410; color: #eee; transition: background-color 150ms linear; display: flex; flex-direction: column; align-items: center; }
-    .compass { position: relative; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(ellipse at center, #0f1410, #0c100c); border: 2px solid #2a3; box-shadow: 0 0 20px rgba(0,255,128,.15) inset; margin-top: 12px; }
-    .tick { position: absolute; left: 50%; top: 50%; width: 2px; height: 12px; background: #2a3; transform-origin: center -108px; opacity: .35; }
-    .needle { position: absolute; left: 50%; top: 50%; width: 4px; height: 110px; background: linear-gradient(#f33,#f55); transform-origin: center 100px; border-radius: 2px; box-shadow: 0 0 8px rgba(255,64,64,.5); }
-    .center { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; background: #eee; border-radius: 50%; transform: translate(-50%,-50%); box-shadow: 0 0 8px rgba(255,255,255,.4); }
-    .dist { font-size: 28px; text-align: center; margin-top: 14px; }
-    .info { font-size: 13px; opacity: .7; text-align: center; margin-top: 6px; }
+    .dist { font-size: 56px; text-align: center; margin-top: 24px; font-weight: 700; letter-spacing: 1px; }
+    .info { font-size: 13px; opacity: .7; text-align: center; margin-top: 10px; }
   </style>
   <script>
     // Обфускация параметров: Base64URL JSON в hash (#p=...)
@@ -81,22 +77,10 @@
         const b = 30;
         document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
       }
-      // создаём визуальный компас
-      const comp = document.createElement('div'); comp.className='compass'; document.body.appendChild(comp);
-      for (let i=0;i<8;i++){ const t=document.createElement('div'); t.className='tick'; t.style.transform=`translate(-50%,-50%) rotate(${i*45}deg)`; comp.appendChild(t); }
-      const needle = document.createElement('div'); needle.className='needle'; needle.style.transform='translate(-50%,-50%) rotate(0deg)'; comp.appendChild(needle);
-      const center = document.createElement('div'); center.className='center'; comp.appendChild(center);
-      let lastAngle = null; const ease = 0.15; // анимация стрелки
+      // убираем графику компаса — оставляем крупные цифры расстояния
       const onpos = (pos)=>{
         const {latitude, longitude} = pos.coords;
         const d=haversine(latitude, longitude, tLat, tLon);
-        const b=bearing(latitude, longitude, tLat, tLon);
-        const [sym, label]=sector8(b);
-        // анимируем стрелку до нового угла
-        const target = b; if (lastAngle==null) lastAngle = target;
-        let diff = ((target - lastAngle + 540) % 360) - 180; // короткий путь
-        lastAngle = (lastAngle + diff * ease + 360) % 360;
-        needle.style.transform = `translate(-50%,-50%) rotate(${lastAngle}deg)`;
         distEl.textContent=d+" м";
         info.textContent="Радиус: "+radius+" м";
         if(d<=radius){ validate(agid, tid); }
@@ -109,7 +93,6 @@
   </script>
   </head>
 <body>
-  <div class="arrow" id="arrow" style="display:none"></div>
   <div class="dist" id="dist">— м</div>
   <div class="info" id="info">Инициализация…</div>
 </body>
