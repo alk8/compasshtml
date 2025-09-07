@@ -58,9 +58,13 @@
     window.addEventListener('DOMContentLoaded', ()=>{
       const dec=tryDecodePayload();
       const params=new URLSearchParams(location.search);
-      const tLat = Number(dec?.lat ?? params.get('lat'));
-      const tLon = Number(dec?.lon ?? params.get('lon'));
-      const radius = Number(dec?.r ?? params.get('r') ?? 15);
+      const tLat = parseFloat(dec?.lat ?? params.get('lat'));
+      const tLon = parseFloat(dec?.lon ?? params.get('lon'));
+      const radius = parseInt(dec?.r ?? params.get('r') ?? 15, 10);
+      if (Number.isNaN(tLat) || Number.isNaN(tLon)) {
+        document.getElementById('info').textContent = 'Некорректные координаты';
+        return;
+      }
       const agid = dec?.ag ?? params.get('ag');
       const tid = dec?.tm ?? params.get('tm');
       const arrow=document.getElementById('arrow');
