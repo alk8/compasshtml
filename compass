@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Компас</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+    .arrow { font-size: 64px; text-align: center; margin-top: 24px; }
+    .dist { font-size: 28px; text-align: center; margin-top: 8px; }
+    .info { font-size: 14px; opacity: .7; text-align: center; margin-top: 8px; }
+    button { width: 100%; padding: 12px; margin-top: 16px; font-size: 18px; }
+  </style>
+  <script>
+    function toRad(d){return d*Math.PI/180}
+    function toDeg(r){return r*180/Math.PI}
+    function haversine(lat1, lon1, lat2, lon2){
+      const R=6371000;
+      const dLat=toRad(lat2-lat1);
+      const dLon=toRad(lon2-lon1);
+      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      return Math.round(R*c);
+    }
+    function bearing(lat1, lon1, lat2, lon2){
+      const φ1=toRad(lat1), φ2=toRad(lat2), λ=toRad(lon2-lon1);
+      const y=Math.sin(λ)*Math.cos(φ2);
+      const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(λ);
+      const θ=toDeg(Math.atan2(y,x));
+      return (θ+360)%360;
+    }
+    function sector8(b){
+      const d=((b%360)+360)%360;
+      if(d>=337.5||d<22.5) return ['↑','С'];
+      if(d<67.5) return ['↗','СВ'];
+      if(d<112.5) return ['→','В'];
+      if(d<157.5) return ['↘','ЮВ'];
+      if(d<202.5) return ['↓','Ю'];
+      if(d<247.5) return ['↙','ЮЗ'];
+      if(d<292.5) return ['←','З'];
+      return ['↖','СЗ'];
+    }
+    async function validate(activeGameId, teamId){
+      alert('Валидация в этом демо не подключена к backend');
+    }
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const params=new URLSearchParams(location.search);
+      const tLat=parseFloat(params.get('lat'));
+      const tLon=parseFloat(params.get('lon'));
+      const radius=parseInt(params.get('r')||'15',10);
+      const agid=params.get('ag');
+      const tid=params.get('tm');
+      const arrow=document.getElementById('arrow');
+      const distEl=document.getElementById('dist');
+      const info=document.getElementById('info');
+      if(!('geolocation' in navigator)){ info.textContent='Геолокация не поддерживается'; return; }
+      navigator.geolocation.watchPosition(pos=>{
+        const {latitude, longitude} = pos.coords;
+        const d=haversine(latitude, longitude, tLat, tLon);
+        const b=bearing(latitude, longitude, tLat, tLon);
+        const [sym, label]=sector8(b);
+        arrow.textContent=sym+" "+label;
+        distEl.textContent=d+" м";
+        info.textContent="Радиус: "+radius+" м";
+        if(d<=radius){ validate(agid, tid); }
+      }, err=>{ info.textContent='Ошибка геолокации: '+err.message; }, {enableHighAccuracy:true, maximumAge:1000, timeout:10000});
+    });
+  </script>
+  </head>
+<body>
+  <div class="arrow" id="arrow">🧭</div>
+  <div class="dist" id="dist">— м</div>
+  <div class="info" id="info">Инициализация…</div>
+  <button onclick="history.back()">Закрыть</button>
+</body>
+</html>
+
+
