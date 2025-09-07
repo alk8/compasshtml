@@ -5,13 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Компас</title>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 16px; background: #111; color: #eee; }
+    body { font-family: sans-serif; margin: 0; padding: 16px; background: #101410; color: #eee; transition: background-color 150ms linear; }
     .arrow { font-size: 64px; text-align: center; margin-top: 24px; }
     .dist { font-size: 28px; text-align: center; margin-top: 8px; }
     .info { font-size: 14px; opacity: .7; text-align: center; margin-top: 8px; }
     button { width: 100%; padding: 12px; margin-top: 16px; font-size: 18px; }
   </style>
   <script>
+    // Обфускация параметров: Base64URL JSON в hash (#p=...)
+    function b64urlToStr(b64){ b64=b64.replace(/-/g,'+').replace(/_/g,'/'); const pad=b64.length%4; if(pad) b64+='='.repeat(4-pad); return atob(b64); }
+    function tryDecodePayload(){
+      const sp = new URLSearchParams(location.search);
+      let p = sp.get('p');
+      if (!p && location.hash.startsWith('#')) {
+        const hs = new URLSearchParams(location.hash.substring(1));
+        p = hs.get('p');
+      }
+      if(!p) return null;
+      try{ const json=b64urlToStr(p); return JSON.parse(json);}catch(e){ return null; }
+    }
     function toRad(d){return d*Math.PI/180}
     function toDeg(r){return r*180/Math.PI}
     function haversine(lat1, lon1, lat2, lon2){
@@ -44,17 +56,26 @@
       alert('Валидация в этом демо не подключена к backend');
     }
     window.addEventListener('DOMContentLoaded', ()=>{
+      const dec=tryDecodePayload();
       const params=new URLSearchParams(location.search);
-      const tLat=parseFloat(params.get('lat'));
-      const tLon=parseFloat(params.get('lon'));
-      const radius=parseInt(params.get('r')||'15',10);
-      const agid=params.get('ag');
-      const tid=params.get('tm');
+      const tLat = Number(dec?.lat ?? params.get('lat'));
+      const tLon = Number(dec?.lon ?? params.get('lon'));
+      const radius = Number(dec?.r ?? params.get('r') ?? 15);
+      const agid = dec?.ag ?? params.get('ag');
+      const tid = dec?.tm ?? params.get('tm');
       const arrow=document.getElementById('arrow');
       const distEl=document.getElementById('dist');
       const info=document.getElementById('info');
       if(!('geolocation' in navigator)){ info.textContent='Геолокация не поддерживается'; return; }
-      navigator.geolocation.watchPosition(pos=>{
+      function setBg(dist){
+        const max = Math.max(radius*10, 200);
+        const t = Math.max(0, Math.min(1, 1 - dist/max));
+        const r = Math.round(30 + (1-t)*120);
+        const g = Math.round(40 + t*180);
+        const b = 30;
+        document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+      }
+      const onpos = (pos)=>{
         const {latitude, longitude} = pos.coords;
         const d=haversine(latitude, longitude, tLat, tLon);
         const b=bearing(latitude, longitude, tLat, tLon);
@@ -63,7 +84,11 @@
         distEl.textContent=d+" м";
         info.textContent="Радиус: "+radius+" м";
         if(d<=radius){ validate(agid, tid); }
-      }, err=>{ info.textContent='Ошибка геолокации: '+err.message; }, {enableHighAccuracy:true, maximumAge:1000, timeout:10000});
+        setBg(d);
+      };
+      const onerr = (err)=>{ info.textContent='Ошибка геолокации: '+err.message; };
+      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true, maximumAge:0, timeout:10000});
+      setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
     });
   </script>
   </head>
