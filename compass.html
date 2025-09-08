@@ -5,15 +5,107 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Компас</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 16px; background: #101410; color: #eee; transition: background-color 150ms linear; display: flex; flex-direction: column; align-items: stretch; min-height: 100vh; }
-    .dist { font-size: 56px; text-align: center; margin-top: 16px; font-weight: 700; letter-spacing: 1px; }
-    .info { font-size: 13px; opacity: .8; text-align: center; margin-top: 8px; }
-    .controls { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
-    .controls .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .pill { padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2; background: rgba(0,0,0,0.15); color: #eee; cursor: pointer; text-align: center; }
-    .pill.secondary { border-color: #444; }
-    .muted { color: #a9b; font-size: 12px; text-align: center; margin-top: 8px; }
-    label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(160deg, #0c0f14 0%, #1a1f24 100%);
+      color: #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      transition: background-color 300ms linear;
+    }
+
+    .dist-wrapper {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #1f252a, #13181c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 255, 128, 0.2);
+      position: relative;
+      animation: pulse 2.5s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 rgba(0,255,128,0.2); }
+      50% { box-shadow: 0 0 40px rgba(0,255,128,0.35); }
+      100% { box-shadow: 0 0 0 rgba(0,255,128,0.2); }
+    }
+    .dist {
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .info {
+      margin-top: 14px;
+      font-size: 14px;
+      opacity: 0.85;
+      text-align: center;
+    }
+
+    .controls {
+      margin-top: 40px;
+      width: 90%;
+      max-width: 400px;
+      background: #181d22;
+      border: 1px solid #2a323a;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .controls h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #9aa;
+      margin: 0;
+      text-align: center;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 15px;
+    }
+
+    .row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      fill: #39d98a;
+      flex-shrink: 0;
+    }
+
+    input[type="checkbox"] {
+      accent-color: #39d98a;
+      width: 18px;
+      height: 18px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: #39d98a;
+    }
   </style>
   <script>
     function b64urlToStr(b64){ b64=b64.replace(/-/g,'+').replace(/_/g,'/'); const pad=b64.length%4; if(pad) b64+='='.repeat(4-pad); return atob(b64); }
@@ -56,10 +148,8 @@
       const snd = document.getElementById('snd').checked;
       const vib = document.getElementById('vib').checked;
       const vol = parseFloat(document.getElementById('vol').value||'0.12');
-      const tglSound = true; // always on by default
       if(!lastD){ schedule(500); return; }
       const t = intervalSec(lastD);
-      // интервал скрыт из UI, но оставлен в логике
       if(t == null){ schedule(500); return; }
       const now=performance.now();
       if(now - lastBeepAt >= t*1000 - 20){
@@ -101,7 +191,6 @@
       navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true, maximumAge:0, timeout:10000});
       setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
 
-      // первый пользовательский жест для активации AudioContext: на изменение громкости
       document.getElementById('vol').addEventListener('input', ()=>{ allowSound=true; ensureAudio(); audioCtx.resume(); });
 
       schedule(200);
@@ -109,16 +198,31 @@
   </script>
 </head>
 <body>
-  <div class="dist" id="dist">— м</div>
+  <div class="dist-wrapper">
+    <div class="dist" id="dist">— м</div>
+  </div>
   <div class="info" id="info">Инициализация…</div>
 
   <div class="controls">
-    <div class="muted">Настройки пеленгатора</div>
-    <div class="row"><label><input id="snd" type="checkbox" checked/> Звук</label></div>
-    <div class="row"><label><input id="vib" type="checkbox"/> Вибрация</label></div>
-    <div class="row"><label style="width:100%">Сила сигнала <input id="vol" style="width:100%" type="range" min="0" max="1" step="0.01" value="0.12"/></label></div>
+    <h2>Настройки</h2>
+    <div class="row">
+      <label>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 9v6h4l5 5V4l-5 5H4zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
+        <input id="snd" type="checkbox" checked/> Звук
+      </label>
+    </div>
+    <div class="row">
+      <label>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M16 1l-2 2 3 3 2-2-3-3zm-8 0L6 3l3 3 2-2-3-3zm12.95 7.05l-2-2-3 3 2 2 3-3zM2.05 8.05l3 3 2-2-3-3-2 2zM12 5a7 7 0 00-7 7h2a5 5 0 1110 0h2a7 7 0 00-7-7zm0 4a3 3 0 00-3 3h2a1 1 0 112 0h2a3 3 0 00-3-3z"/></svg>
+        <input id="vib" type="checkbox"/> Вибрация
+      </label>
+    </div>
+    <div class="row">
+      <label style="width:100%">
+        Сила сигнала
+        <input id="vol" style="width:100%" type="range" min="0" max="1" step="0.01" value="0.12"/>
+      </label>
+    </div>
   </div>
 </body>
 </html>
-
-
