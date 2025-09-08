@@ -1,101 +1,182 @@
 <!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Компас</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 16px; background: #101410; color: #eee; transition: background-color 150ms linear; display: flex; flex-direction: column; align-items: center; }
-    .dist { font-size: 56px; text-align: center; margin-top: 24px; font-weight: 700; letter-spacing: 1px; }
-    .info { font-size: 13px; opacity: .7; text-align: center; margin-top: 10px; }
-  </style>
-  <script>
-    // Обфускация параметров: Base64URL JSON в hash (#p=...)
-    function b64urlToStr(b64){ b64=b64.replace(/-/g,'+').replace(/_/g,'/'); const pad=b64.length%4; if(pad) b64+='='.repeat(4-pad); return atob(b64); }
-    function tryDecodePayload(){
-      const sp = new URLSearchParams(location.search);
-      let p = sp.get('p');
-      if (!p && location.hash.startsWith('#')) {
-        const hs = new URLSearchParams(location.hash.substring(1));
-        p = hs.get('p');
-      }
-      if(!p) return null;
-      try{ const json=b64urlToStr(p); return JSON.parse(json);}catch(e){ return null; }
-    }
-    function toRad(d){return d*Math.PI/180}
-    function toDeg(r){return r*180/Math.PI}
-    function haversine(lat1, lon1, lat2, lon2){
-      const R=6371000;
-      const dLat=toRad(lat2-lat1);
-      const dLon=toRad(lon2-lon1);
-      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-      return Math.round(R*c);
-    }
-    function bearing(lat1, lon1, lat2, lon2){
-      const φ1=toRad(lat1), φ2=toRad(lat2), λ=toRad(lon2-lon1);
-      const y=Math.sin(λ)*Math.cos(φ2);
-      const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(λ);
-      const θ=toDeg(Math.atan2(y,x));
-      return (θ+360)%360;
-    }
-    function sector8(b){
-      const d=((b%360)+360)%360;
-      if(d>=337.5||d<22.5) return ['↑','С'];
-      if(d<67.5) return ['↗','СВ'];
-      if(d<112.5) return ['→','В'];
-      if(d<157.5) return ['↘','ЮВ'];
-      if(d<202.5) return ['↓','Ю'];
-      if(d<247.5) return ['↙','ЮЗ'];
-      if(d<292.5) return ['←','З'];
-      return ['↖','СЗ'];
-    }
-    async function validate(activeGameId, teamId){
-      alert('Валидация в этом демо не подключена к backend');
-    }
-    window.addEventListener('DOMContentLoaded', ()=>{
-      const dec=tryDecodePayload();
-      const params=new URLSearchParams(location.search);
-      const tLat = parseFloat(dec?.lat ?? params.get('lat'));
-      const tLon = parseFloat(dec?.lon ?? params.get('lon'));
-      const radius = parseInt(dec?.r ?? params.get('r') ?? 15, 10);
-      if (Number.isNaN(tLat) || Number.isNaN(tLon)) {
-        document.getElementById('info').textContent = 'Некорректные координаты';
-        return;
-      }
-      const agid = dec?.ag ?? params.get('ag');
-      const tid = dec?.tm ?? params.get('tm');
-      const arrow=document.getElementById('arrow');
-      const distEl=document.getElementById('dist');
-      const info=document.getElementById('info');
-      if(!('geolocation' in navigator)){ info.textContent='Геолокация не поддерживается'; return; }
-      function setBg(dist){
-        const max = Math.max(radius*10, 200);
-        const t = Math.max(0, Math.min(1, 1 - dist/max));
-        const r = Math.round(30 + (1-t)*120);
-        const g = Math.round(40 + t*180);
-        const b = 30;
-        document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-      }
-      // убираем графику компаса — оставляем крупные цифры расстояния
-      const onpos = (pos)=>{
-        const {latitude, longitude} = pos.coords;
-        const d=haversine(latitude, longitude, tLat, tLon);
-        distEl.textContent=d+" м";
-        info.textContent="Радиус: "+radius+" м";
-        if(d<=radius){ validate(agid, tid); }
-        setBg(d);
-      };
-      const onerr = (err)=>{ info.textContent='Ошибка геолокации: '+err.message; };
-      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true, maximumAge:0, timeout:10000});
-      setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
-    });
-  </script>
-  </head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Компас с пеленгатором</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; color: #111 }
+  .row { display: flex; align-items: center; gap: 8px; margin: 8px 0 }
+  .muted { color: #666; font-size: 12px }
+  .meter { font-variant-numeric: tabular-nums; }
+  button, input[type="checkbox"] { font-size: 16px }
+  .pill { padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; }
+</style>
 <body>
-  <div class="dist" id="dist">— м</div>
-  <div class="info" id="info">Инициализация…</div>
+  <h3>Пеленгатор</h3>
+  <div class="row">
+    <label><input id="beepToggle" type="checkbox" /> Включить пеленгатор</label>
+    <button id="testBtn" class="pill">Тест</button>
+  </div>
+  <div class="row">
+    <label><input id="sndToggle" type="checkbox" checked /> Звук</label>
+    <label><input id="vibToggle" type="checkbox" /> Вибро</label>
+    <label>Громкость <input id="vol" type="range" min="0" max="1" step="0.01" value="0.12" /></label>
+  </div>
+  <div class="row">
+    <span>Расстояние: <b id="dist" class="meter">—</b></span>
+    <span class="muted">Интервал: <span id="intv" class="meter">—</span></span>
+  </div>
+  <div class="row">
+    <button id="imHere" class="pill">Я на месте</button>
+    <span class="muted">Отправьте геопозицию в чат с ботом (скрепка → Геопозиция) для зачёта точки</span>
+  </div>
+
+<script>
+(function() {
+  // Payload: #p=base64url({"lat":..,"lon":..,"r":..,"ag":"..","tm":".."})
+  function parsePayload() {
+    const m = location.hash.match(/p=([^&]+)/);
+    if (!m) return null;
+    try {
+      const json = atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));
+      return JSON.parse(json);
+    } catch (_) { return null; }
+  }
+
+  // Haversine
+  function distMeters(aLat, aLon, bLat, bLon) {
+    const R = 6371000;
+    const toRad = x => x * Math.PI/180;
+    const dLat = toRad(bLat - aLat), dLon = toRad(bLon - aLon);
+    const lat1 = toRad(aLat), lat2 = toRad(bLat);
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  }
+
+  // Log scale t(d) 1..5 s for d ∈ [20,1000], silent if >1000; cap at 20 m
+  const T_MIN = 1.0, T_MAX = 5.0, D_MIN = 20, D_MAX = 1000, K = 9;
+  function normY(d) {
+    const dClamped = Math.min(D_MAX, Math.max(D_MIN, d));
+    const x = (dClamped - D_MIN) / (D_MAX - D_MIN);
+    return Math.log(1 + K * x) / Math.log(1 + K);
+  }
+  function intervalSec(d) {
+    if (d > D_MAX) return null; // silent
+    if (d <= D_MIN) return T_MIN; // cap
+    const y = normY(d);
+    return T_MIN + (T_MAX - T_MIN) * y;
+  }
+  function toneHz(d) {
+    const fMin = 650, fMax = 950;
+    if (d > D_MAX) return fMin;
+    const y = (d <= D_MIN) ? 0 : normY(d);
+    return Math.round(fMax - (fMax - fMin) * y);
+  }
+  function gainVal(d, baseVol) {
+    const gMin = 0.06, gMax = 0.16;
+    if (d > D_MAX) return 0;
+    const y = (d <= D_MIN) ? 0 : normY(d);
+    const g = gMin + (gMax - gMin) * (1 - y);
+    return Math.min(1, g * baseVol / 0.12); // scale by slider
+  }
+
+  let audioCtx = null, masterGain = null;
+  function ensureAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0;
+    masterGain.connect(audioCtx.destination);
+  }
+  function beepOnce(freq, gain, durMs = 120) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.frequency.value = freq;
+    osc.type = "sine";
+    g.gain.setValueAtTime(0, audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(Math.max(1e-4, gain * 0.001), audioCtx.currentTime + durMs/1000);
+    osc.connect(g).connect(masterGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + durMs/1000 + 0.02);
+  }
+
+  const $beep = document.getElementById('beepToggle');
+  const $test = document.getElementById('testBtn');
+  const $snd  = document.getElementById('sndToggle');
+  const $vib  = document.getElementById('vibToggle');
+  const $vol  = document.getElementById('vol');
+  const $dist = document.getElementById('dist');
+  const $intv = document.getElementById('intv');
+  const $here = document.getElementById('imHere');
+
+  $test.addEventListener('click', () => {
+    ensureAudio();
+    audioCtx.resume();
+    masterGain.gain.value = parseFloat($vol.value);
+    beepOnce(800, 0.12);
+    if ($vib.checked && navigator.vibrate) navigator.vibrate(50);
+  });
+
+  let target = parsePayload(); // {lat,lon,r,ag,tm}
+  if (!target) {
+    document.body.insertAdjacentHTML('beforeend','<div class="muted">Нет данных p в URL</div>');
+    return;
+  }
+  let lastBeepAt = 0, timer = null, lastD = null;
+
+  function schedule(nextMs) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(tick, Math.max(100, nextMs|0));
+  }
+
+  function tick() {
+    if (!$beep.checked) return schedule(500);
+    if (!lastD) return schedule(500);
+    const d = lastD;
+    const t = intervalSec(d);
+    $intv.textContent = (t ? t.toFixed(1) + ' с' : '—');
+    if (t == null) return schedule(500); // silent when >1000 m
+
+    const now = performance.now();
+    const due = (now - lastBeepAt) >= (t * 1000 - 20);
+
+    if (due) {
+      lastBeepAt = now;
+      if ($snd.checked) {
+        ensureAudio(); audioCtx.resume();
+        masterGain.gain.value = parseFloat($vol.value);
+        beepOnce(toneHz(d), gainVal(d, parseFloat($vol.value)));
+      }
+      if ($vib.checked && navigator.vibrate) navigator.vibrate(50);
+    }
+    schedule(100);
+  }
+
+  // Geolocation
+  if (!('geolocation' in navigator)) {
+    document.body.insertAdjacentHTML('beforeend','<div class="muted">Геолокация недоступна</div>');
+    return;
+  }
+
+  navigator.geolocation.watchPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    const d = distMeters(latitude, longitude, target.lat, target.lon);
+    lastD = d;
+    $dist.textContent = d + ' м';
+  }, err => {
+    console.warn('geoloc error', err);
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+
+  // Start loop
+  schedule(200);
+
+  // “Я на месте”: подсказка пользователю отправить геопозицию в чат
+  $here.addEventListener('click', () => {
+    alert('Чтобы зачесть точку, отправьте геопозицию в чат с ботом (скрепка → Геопозиция). Бот зачтёт шаг автоматически.');
+  });
+})();
+</script>
 </body>
 </html>
-
-
