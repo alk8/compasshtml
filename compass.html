@@ -8,8 +8,8 @@
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 16px; background: #101410; color: #eee; transition: background-color 150ms linear; display: flex; flex-direction: column; align-items: stretch; min-height: 100vh; }
     .dist { font-size: 56px; text-align: center; margin-top: 16px; font-weight: 700; letter-spacing: 1px; }
     .info { font-size: 13px; opacity: .8; text-align: center; margin-top: 8px; }
-    .controls { margin-top: auto; padding-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
-    .controls .row { display: contents; }
+    .controls { margin-top: auto; padding-top: 16px; display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+    .controls .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .pill { padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2; background: rgba(0,0,0,0.15); color: #eee; cursor: pointer; text-align: center; }
     .pill.secondary { border-color: #444; }
     .muted { color: #a9b; font-size: 12px; text-align: center; margin-top: 8px; }
@@ -59,7 +59,7 @@
       const tglSound = true; // always on by default
       if(!lastD){ schedule(500); return; }
       const t = intervalSec(lastD);
-      document.getElementById('intv').textContent = (t? t.toFixed(1)+' с' : '—');
+      // интервал скрыт из UI, но оставлен в логике
       if(t == null){ schedule(500); return; }
       const now=performance.now();
       if(now - lastBeepAt >= t*1000 - 20){
@@ -101,7 +101,8 @@
       navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true, maximumAge:0, timeout:10000});
       setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
 
-      document.getElementById('testBtn').addEventListener('click', ()=>{ allowSound=true; ensureAudio(); audioCtx.resume(); masterGain.gain.value=parseFloat(document.getElementById('vol').value||'0.12'); beepOnce(800, 0.12); if (navigator.vibrate) navigator.vibrate(50); });
+      // первый пользовательский жест для активации AudioContext: на изменение громкости
+      document.getElementById('vol').addEventListener('input', ()=>{ allowSound=true; ensureAudio(); audioCtx.resume(); });
 
       schedule(200);
     });
@@ -112,9 +113,10 @@
   <div class="info" id="info">Инициализация…</div>
 
   <div class="controls">
-    <div class="row"><div class="muted">Интервал: <span id="intv">—</span></div><div></div></div>
-    <div class="row"><label><input id="snd" type="checkbox" checked/> Звук</label><label><input id="vib" type="checkbox"/> Вибро</label></div>
-    <div class="row"><button id="testBtn" class="pill secondary">Тест</button><label>Сила сигнала <input id="vol" type="range" min="0" max="1" step="0.01" value="0.12"/></label></div>
+    <div class="muted">Настройки пеленгатора</div>
+    <div class="row"><label><input id="snd" type="checkbox" checked/> Звук</label></div>
+    <div class="row"><label><input id="vib" type="checkbox"/> Вибрация</label></div>
+    <div class="row"><label style="width:100%">Сила сигнала <input id="vol" style="width:100%" type="range" min="0" max="1" step="0.01" value="0.12"/></label></div>
   </div>
 </body>
 </html>
