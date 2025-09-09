@@ -1,91 +1,125 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Компас</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: sans-serif;
-      text-align: center;
-      background: #111;
-      color: #eee;
+      background: #0c0f14;
+      color: #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
     }
-    #distance {
-      font-size: 1.5em;
-      margin: 20px 0;
+    .dist-wrapper {
+      width: 200px; height: 200px; border-radius: 50%;
+      background: radial-gradient(circle at center, #1f252a, #13181c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 42px; font-weight: bold;
     }
-    #status {
-      margin: 20px 0;
-      font-weight: bold;
-    }
+    .info { margin-top: 14px; font-size: 14px; opacity: 0.8; text-align: center; }
   </style>
 </head>
 <body>
-  <h2>🧭 Компас</h2>
-  <div id="distance">⏳ Определение координат...</div>
-  <div id="status"></div>
+  <div class="dist-wrapper"><div id="dist">— м</div></div>
+  <div class="info" id="info">Инициализация…</div>
 
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-
-    // --- Парсим параметры ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const targetLat = parseFloat(urlParams.get("lat"));
-    const targetLon = parseFloat(urlParams.get("lon"));
-    const uid = urlParams.get("uid");
-
-    const distanceEl = document.getElementById("distance");
-    const statusEl = document.getElementById("status");
-
-    function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371000;
-      const toRad = x => (x * Math.PI) / 180;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat / 2) ** 2 +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+    // --- utils ---
+    function b64urlToStr(b64){
+      b64 = b64.replace(/-/g,'+').replace(/_/g,'/');
+      const pad = b64.length % 4;
+      if (pad) b64 += '='.repeat(4-pad);
+      return atob(b64);
+    }
+    function toRad(d){ return d*Math.PI/180 }
+    function haversine(lat1, lon1, lat2, lon2){
+      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
     }
 
-    function updatePosition(position) {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-      const dist = haversine(lat, lon, targetLat, targetLon);
+    // --- parse payload ---
+    function getParams(){
+      const params = new URLSearchParams(location.search);
+      let lat, lon, r, uid;
 
-      distanceEl.textContent = `📏 ${dist.toFixed(1)} м`;
+      // сначала пробуем payload p
+      let p = params.get('p');
+      if (!p && location.hash.startsWith('#')) {
+        p = new URLSearchParams(location.hash.substring(1)).get('p');
+      }
+      if (p) {
+        try {
+          const json = b64urlToStr(p);
+          const obj = JSON.parse(json);
+          lat = parseFloat(obj.lat);
+          lon = parseFloat(obj.lon);
+          r   = parseInt(obj.r ?? 15,10);
+          uid = obj.uid;
+        } catch(e){ console.log("payload decode error", e); }
+      }
 
-      if (dist <= 15) {
-        statusEl.textContent = "✅ Попадание в зону";
+      // fallback: прямые query
+      if (!lat) lat = parseFloat(params.get('lat'));
+      if (!lon) lon = parseFloat(params.get('lon'));
+      if (!r)   r   = parseInt(params.get('r') ?? 15,10);
+      if (!uid) uid = params.get('uid');
 
-        tg.sendData(JSON.stringify({
-          action: "compass_success",
-          uid: uid || tg.initDataUnsafe?.user?.id,
-          ts: Date.now()
-        }));
+      return {lat, lon, r, uid};
+    }
 
-        tg.close();
+    // --- notify bot ---
+    function notifyBot(uid){
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        const data = JSON.stringify({action:'compass_success', uid:uid, ts:Date.now()});
+        try {
+          window.Telegram.WebApp.sendData(data);
+        } catch(e){ console.log("sendData error", e); }
+        setTimeout(()=>window.Telegram.WebApp.close(), 500);
       } else {
-        statusEl.textContent = "❌ Далеко...";
+        alert("Точка достигнута! (нет WebApp контекста)");
       }
     }
 
-    function error(err) {
-      statusEl.textContent = "Ошибка гео: " + err.message;
-    }
+    // --- main ---
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const {lat, lon, r, uid} = getParams();
+      const distEl = document.getElementById('dist');
+      const infoEl = document.getElementById('info');
 
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(updatePosition, error, {
-        enableHighAccuracy: true,
-        maximumAge: 1000
-      });
-    } else {
-      statusEl.textContent = "Геолокация не поддерживается";
-    }
+      if (isNaN(lat) || isNaN(lon)){
+        infoEl.textContent = "Некорректные координаты";
+        return;
+      }
+      infoEl.textContent = "Радиус: "+r+" м";
+
+      let fired=false;
+      const onpos = (pos)=>{
+        const {latitude, longitude} = pos.coords;
+        const d = haversine(latitude, longitude, lat, lon);
+        distEl.textContent = d+" м";
+        if (!fired && d <= r){
+          fired=true;
+          infoEl.textContent = "🎯 ДОСТИГНУТА ТОЧКА!";
+          notifyBot(uid);
+        }
+      };
+      const onerr=(err)=>{ infoEl.textContent="Ошибка геолокации: "+err.message; };
+
+      if ('geolocation' in navigator){
+        navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true});
+        setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
+      } else {
+        infoEl.textContent="Геолокация не поддерживается";
+      }
+    });
   </script>
 </body>
 </html>
