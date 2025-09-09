@@ -154,8 +154,36 @@
       const now=performance.now();
       if(now - lastBeepAt >= t*1000 - 20){
         lastBeepAt = now;
-        if(snd && allowSound){ ensureAudio(); audioCtx.resume(); masterGain.gain.value=vol; const gain = (lastD>D_MAX?0:(lastD<=D_MIN?0.16:0.06+(0.16-0.06)*(1-normY(lastD)))); beepOnce(toneHz(lastD), gain*vol/0.12); }
-        if(vib && navigator.vibrate) navigator.vibrate(50);
+
+        // Звук с fallback для Telegram Web
+        if(snd && allowSound){
+          try {
+            ensureAudio();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            masterGain.gain.value=vol;
+            const gain = (lastD>D_MAX?0:(lastD<=D_MIN?0.16:0.06+(0.16-0.06)*(1-normY(lastD))));
+            beepOnce(toneHz(lastD), gain*vol/0.12);
+          } catch(e) {
+            console.warn('Audio failed:', e);
+            // Fallback: можем показать визуальный сигнал
+            document.body.style.animation = 'none';
+            setTimeout(() => document.body.style.animation = 'pulse 2.5s infinite', 100);
+          }
+        }
+
+        // Вибрация с проверкой поддержки
+        if(vib && navigator.vibrate){
+          try {
+            navigator.vibrate(50);
+          } catch(e) {
+            console.warn('Vibration failed:', e);
+            // Fallback: можем использовать визуальный сигнал
+            if (navigator.vibrate === undefined) {
+              document.body.style.animation = 'none';
+              setTimeout(() => document.body.style.animation = 'pulse 1s infinite', 100);
+            }
+          }
+        }
       }
       schedule(100);
     }
@@ -163,9 +191,37 @@
     function deepLinkToBot(){
       const bn = target?.bn; const uid = target?.uid;
       if (bn) {
-        try { location.href = `https://t.me/${bn}?start=CV_${uid||''}`; } catch(e) {}
+        try {
+          // Всегда используем deep link для надежности
+          const url = `https://t.me/${bn}?start=CV_${uid||''}`;
+          console.log('Opening deep link:', url);
+
+          // Для Telegram WebApp отправим данные через WebApp
+          if (window.Telegram?.WebApp) {
+            console.log('Detected Telegram WebApp, sending data...');
+            try {
+              window.Telegram.WebApp.sendData(`webapp:${JSON.stringify({
+                action: 'compass_success',
+                uid: uid,
+                timestamp: Date.now(),
+                type: 'compass_arrival'
+              })}`);
+              console.log('WebApp data sent successfully');
+            } catch(e) {
+              console.error('Failed to send WebApp data:', e);
+              // Fallback to deep link
+              location.href = url;
+            }
+          } else {
+            // Обычный deep link для обычных браузеров
+            location.href = url;
+          }
+        } catch(e) {
+          console.error('Deep link failed:', e);
+          // Fallback: просто закроем окно
+        }
       }
-      setTimeout(()=>window.close(), 400);
+      setTimeout(()=>window.close(), 1000);
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -198,31 +254,31 @@
   </script>
 </head>
 <body>
-  <div class="dist-wrapper">
-    <div class="dist" id="dist">— м</div>
-  </div>
-  <div class="info" id="info">Инициализация…</div>
+<div class="dist-wrapper">
+  <div class="dist" id="dist">— м</div>
+</div>
+<div class="info" id="info">Инициализация…</div>
 
-  <div class="controls">
-    <h2>Настройки</h2>
-    <div class="row">
-      <label>
-        <svg class="icon" viewBox="0 0 24 24"><path d="M4 9v6h4l5 5V4l-5 5H4zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
-        <input id="snd" type="checkbox" checked/> Звук
-      </label>
-    </div>
-    <div class="row">
-      <label>
-        <svg class="icon" viewBox="0 0 24 24"><path d="M16 1l-2 2 3 3 2-2-3-3zm-8 0L6 3l3 3 2-2-3-3zm12.95 7.05l-2-2-3 3 2 2 3-3zM2.05 8.05l3 3 2-2-3-3-2 2zM12 5a7 7 0 00-7 7h2a5 5 0 1110 0h2a7 7 0 00-7-7zm0 4a3 3 0 00-3 3h2a1 1 0 112 0h2a3 3 0 00-3-3z"/></svg>
-        <input id="vib" type="checkbox"/> Вибрация
-      </label>
-    </div>
-    <div class="row">
-      <label style="width:100%">
-        Сила сигнала
-        <input id="vol" style="width:100%" type="range" min="0" max="1" step="0.01" value="0.12"/>
-      </label>
-    </div>
+<div class="controls">
+  <h2>Настройки</h2>
+  <div class="row">
+    <label>
+      <svg class="icon" viewBox="0 0 24 24"><path d="M4 9v6h4l5 5V4l-5 5H4zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
+      <input id="snd" type="checkbox" checked/> Звук
+    </label>
   </div>
+  <div class="row">
+    <label>
+      <svg class="icon" viewBox="0 0 24 24"><path d="M16 1l-2 2 3 3 2-2-3-3zm-8 0L6 3l3 3 2-2-3-3zm12.95 7.05l-2-2-3 3 2 2 3-3zM2.05 8.05l3 3 2-2-3-3-2 2zM12 5a7 7 0 00-7 7h2a5 5 0 1110 0h2a7 7 0 00-7-7zm0 4a3 3 0 00-3 3h2a1 1 0 112 0h2a3 3 0 00-3-3z"/></svg>
+      <input id="vib" type="checkbox"/> Вибрация
+    </label>
+  </div>
+  <div class="row">
+    <label style="width:100%">
+      Сила сигнала
+      <input id="vol" style="width:100%" type="range" min="0" max="1" step="0.01" value="0.12"/>
+    </label>
+  </div>
+</div>
 </body>
 </html>
