@@ -6,141 +6,175 @@
   <title>Компас</title>
   <style>
     body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: "Inter", sans-serif;
       margin: 0;
       padding: 0;
-      background: #0e1117;
-      color: #f5f5f5;
+      background: linear-gradient(160deg, #0c0f14 0%, #1a1f24 100%);
+      color: #e8e8e8;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      transition: background-color 200ms ease;
     }
 
-    .card {
-      background: #1a1f29;
-      border-radius: 16px;
-      padding: 24px 32px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-      text-align: center;
-      max-width: 360px;
-      width: 100%;
+    .dist-wrapper {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #1f252a, #13181c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 255, 128, 0.2);
+      position: relative;
     }
-
     .dist {
-      font-size: 64px;
+      font-size: 48px;
       font-weight: 700;
-      margin: 0 0 12px;
-      letter-spacing: 1px;
+      text-align: center;
     }
 
     .info {
+      margin-top: 14px;
       font-size: 14px;
-      opacity: .85;
-      margin-bottom: 16px;
+      opacity: 0.85;
+      text-align: center;
     }
 
-    .status {
-      font-size: 13px;
-      color: #9aa0a6;
+    .debug {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      color: #00ff80;
+      padding: 10px;
+      font-size: 12px;
+      border-radius: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
     }
+    .debug.show { display: block; }
   </style>
   <script>
-    function toRad(d){ return d * Math.PI / 180; }
-    function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371000;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2)**2 +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon/2)**2;
-      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    // === УТИЛИТЫ ===
+    function b64urlToStr(b64){
+      b64 = b64.replace(/-/g,'+').replace(/_/g,'/');
+      const pad = b64.length % 4;
+      if (pad) b64 += '='.repeat(4-pad);
+      return atob(b64);
     }
-
-    function notifyBotSuccess(uid) {
+    function tryDecodePayload(){
+      const sp = new URLSearchParams(location.search);
+      let p = sp.get('p');
+      if (!p && location.hash.startsWith('#')) {
+        p = new URLSearchParams(location.hash.substring(1)).get('p');
+      }
+      if (!p) return null;
       try {
-        if (window.Telegram?.WebApp) {
-          window.Telegram.WebApp.sendData(`SUCCESS_${uid}`);
-          window.Telegram.WebApp.close();
-        } else {
-          console.warn("WebApp API недоступно, бот не уведомлен.");
-        }
-      } catch (e) {
-        console.error("Ошибка при уведомлении бота:", e);
+        const json = b64urlToStr(p);
+        return JSON.parse(json);
+      } catch(e) {
+        debugLog('Ошибка декодирования payload: ' + e.message);
+        return null;
       }
     }
 
-    let fired = false;
+    function toRad(d){ return d*Math.PI/180 }
+    function haversine(lat1, lon1, lat2, lon2){
+      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      return Math.round(R*c);
+    }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const params = new URLSearchParams(location.search);
-      const tLat = parseFloat(params.get('lat'));
-      const tLon = parseFloat(params.get('lon'));
-      const radius = parseInt(params.get('r') || 15, 10);
-      const uid = params.get('uid');
-
-      const distEl = document.getElementById('dist');
-      const infoEl = document.getElementById('info');
-      const statusEl = document.getElementById('status');
-
-      if (Number.isNaN(tLat) || Number.isNaN(tLon)) {
-        infoEl.textContent = 'Некорректные координаты';
-        return;
+    function debugLog(msg){
+      console.log(msg);
+      const dbg=document.getElementById('debug');
+      if(dbg){
+        dbg.innerHTML += msg+"<br>";
+        dbg.classList.add('show');
+        dbg.scrollTop=dbg.scrollHeight;
       }
+    }
 
-      if (!('geolocation' in navigator)) {
-        infoEl.textContent = 'Геолокация не поддерживается';
-        return;
-      }
-
-      function setBg(dist) {
-        const max = Math.max(radius * 10, 200);
-        const t = Math.max(0, Math.min(1, 1 - dist / max));
-        const r = Math.round(40 + (1 - t) * 120);
-        const g = Math.round(60 + t * 160);
-        const b = 40;
-        document.body.style.backgroundColor = `rgb(${r},${g},${b})`;
-      }
-
-      function onpos(pos) {
-        const { latitude, longitude } = pos.coords;
-        const d = haversine(latitude, longitude, tLat, tLon);
-        distEl.textContent = d + " м";
-        infoEl.textContent = "Радиус цели: " + radius + " м";
-        setBg(d);
-
-        if (!fired && d <= radius) {
-          fired = true;
-          notifyBotSuccess(uid);
+    // === УВЕДОМЛЕНИЕ БОТА ===
+    function notifyBot(uid){
+      debugLog("Пробуем оповестить бота, uid="+uid);
+      if (window.Telegram?.WebApp) {
+        try {
+          window.Telegram.WebApp.ready();
+          const data = JSON.stringify({
+            action: 'compass_success',
+            uid: uid,
+            ts: Date.now()
+          });
+          if (typeof window.Telegram.WebApp.sendData === 'function') {
+            window.Telegram.WebApp.sendData(data);
+            debugLog("Отправлено через sendData");
+          }
+          window.Telegram.WebApp.close();
+        } catch(e){
+          debugLog("Ошибка WebApp: " + e.message);
+          window.close();
         }
+      } else {
+        debugLog("Не WebApp, просто закрываем окно");
+        setTimeout(()=>window.close(), 1000);
+      }
+    }
+
+    // === MAIN ===
+    window.addEventListener('DOMContentLoaded', ()=>{
+      debugLog("=== init ===");
+      const params = new URLSearchParams(location.search);
+      const payload = tryDecodePayload();
+
+      const tLat = parseFloat(payload?.lat ?? params.get('lat'));
+      const tLon = parseFloat(payload?.lon ?? params.get('lon'));
+      const radius = parseInt(payload?.r ?? params.get('r') ?? 15, 10);
+      const uid = payload?.uid ?? params.get('uid');
+
+      const distEl=document.getElementById('dist');
+      const infoEl=document.getElementById('info');
+
+      if (Number.isNaN(tLat) || Number.isNaN(tLon)){
+        infoEl.textContent="Некорректные координаты";
+        debugLog("lat/lon невалидные");
+        return;
       }
 
-      function onerr(err) {
-        statusEl.textContent = "Ошибка геолокации: " + err.message;
+      let fired=false;
+      const onpos=(pos)=>{
+        const {latitude, longitude} = pos.coords;
+        const d = haversine(latitude, longitude, tLat, tLon);
+        distEl.textContent=d+" м";
+        infoEl.textContent="Радиус: "+radius+" м";
+        debugLog("Расстояние="+d+"м");
+        if(!fired && d <= radius){
+          fired=true;
+          debugLog("=== ДОСТИГНУТА ТОЧКА ===");
+          notifyBot(uid);
+        }
+      };
+      const onerr=(err)=>{ infoEl.textContent="Ошибка геолокации: "+err.message; };
+
+      if(!('geolocation' in navigator)){
+        infoEl.textContent="Геолокация не поддерживается";
+        return;
       }
 
-      navigator.geolocation.watchPosition(onpos, onerr, {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 10000
-      });
-
-      // страховочный опрос
-      setInterval(() => {
-        navigator.geolocation.getCurrentPosition(onpos, onerr, {
-          enableHighAccuracy: true
-        });
-      }, 5000);
+      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true});
+      setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
     });
   </script>
 </head>
 <body>
-  <div class="card">
-    <div class="dist" id="dist">— м</div>
-    <div class="info" id="info">Ожидание геопозиции…</div>
-    <div class="status" id="status"></div>
-  </div>
+<div class="debug" id="debug"></div>
+<div class="dist-wrapper"><div class="dist" id="dist">— м</div></div>
+<div class="info" id="info">Инициализация…</div>
 </body>
 </html>
