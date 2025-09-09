@@ -50,6 +50,26 @@
       text-align: center;
     }
 
+    .debug {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      color: #00ff80;
+      padding: 10px;
+      font-size: 12px;
+      border-radius: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .debug.show {
+      display: block;
+    }
+
     .controls {
       margin-top: 40px;
       width: 90%;
@@ -230,15 +250,37 @@
       schedule(100);
     }
 
+    function debugLog(message) {
+      console.log(message);
+      const debugEl = document.getElementById('debug');
+      if (debugEl) {
+        debugEl.innerHTML += message + '<br>';
+        debugEl.classList.add('show');
+        debugEl.scrollTop = debugEl.scrollHeight;
+      }
+    }
+
     function deepLinkToBot(){
       const bn = target?.bn; const uid = target?.uid;
       if (bn) {
         try {
-          console.log('Sending WebApp data to bot');
+          debugLog('=== DEEPLINK DEBUG ===');
+          debugLog('Sending WebApp data to bot');
+          debugLog('window.Telegram exists: ' + !!window.Telegram);
+          debugLog('window.Telegram.WebApp exists: ' + !!window.Telegram?.WebApp);
 
           // Для Telegram WebApp пробуем специальную интеграцию
           if (window.Telegram?.WebApp) {
-            console.log('Detected Telegram WebApp');
+            debugLog('Detected Telegram WebApp');
+            debugLog('WebApp version: ' + window.Telegram.WebApp.version);
+            debugLog('WebApp platform: ' + window.Telegram.WebApp.platform);
+            debugLog('WebApp initData: ' + window.Telegram.WebApp.initData);
+            
+            // Инициализируем WebApp
+            window.Telegram.WebApp.ready();
+            debugLog('WebApp initialized');
+            debugLog('WebApp state: ' + window.Telegram.WebApp.isExpanded);
+            debugLog('WebApp theme: ' + window.Telegram.WebApp.colorScheme);
 
             // Попробуем отправить данные через WebApp (если поддерживается)
             try {
@@ -250,25 +292,88 @@
               });
 
               // Отправляем данные через WebApp
-              console.log('Attempting to send WebApp data:', webappData);
+              debugLog('=== COMPASS SUCCESS DEBUG ===');
+              debugLog('Attempting to send WebApp data: ' + webappData);
+              debugLog('WebApp object: ' + !!window.Telegram?.WebApp);
+              debugLog('WebApp version: ' + window.Telegram?.WebApp?.version);
+              debugLog('WebApp platform: ' + window.Telegram?.WebApp?.platform);
+              debugLog('WebApp initData: ' + window.Telegram?.WebApp?.initData);
+              debugLog('sendData function: ' + typeof window.Telegram?.WebApp?.sendData);
+              debugLog('WebApp ready state: ' + window.Telegram?.WebApp?.isExpanded);
+              
+              // Попробуем отправить данные через WebApp
+              debugLog('Trying to send data via WebApp...');
               
               try {
-                window.Telegram.WebApp.sendData(webappData);
-                console.log('WebApp data sent successfully');
-                
-                // Сразу закрываем WebApp после отправки данных
-                window.Telegram.WebApp.close();
-                console.log('WebApp closed after sending data');
+                // Способ 1: sendData (если доступен)
+                if (typeof window.Telegram.WebApp.sendData === 'function') {
+                  debugLog('Using sendData method');
+                  window.Telegram.WebApp.sendData(webappData);
+                  debugLog('Data sent via sendData');
+                  
+                  // Сразу закрываем WebApp
+                  window.Telegram.WebApp.close();
+                  debugLog('WebApp closed after data send');
+                  
+                } else {
+                  debugLog('sendData not available, trying events...');
+                  
+                  // Способ 2: Попробуем через события
+                  try {
+                    // Устанавливаем данные в WebApp
+                    window.Telegram.WebApp.data = webappData;
+                    debugLog('Data set in WebApp.data');
+                    
+                    // Попробуем триггернуть событие
+                    if (window.Telegram.WebApp.triggerEvent) {
+                      window.Telegram.WebApp.triggerEvent('compass_success', webappData);
+                      debugLog('Event triggered');
+                    }
+                    
+                    // Попробуем через MainButton но без показа
+                    window.Telegram.WebApp.MainButton.setText('Complete');
+                    window.Telegram.WebApp.MainButton.onClick(() => {
+                      console.log('Auto-triggered button click');
+                      window.Telegram.WebApp.close();
+                    });
+                    
+                    // Автоматически триггернем кнопку
+                    setTimeout(() => {
+                      debugLog('Auto-triggering button');
+                      window.Telegram.WebApp.MainButton.click();
+                    }, 100);
+                    
+                  } catch(e) {
+                    debugLog('Event method failed: ' + e.message);
+                    
+                    // Простой fallback - просто закрываем WebApp
+                    debugLog('WebApp methods failed, closing WebApp anyway');
+                    try {
+                      window.Telegram.WebApp.close();
+                      debugLog('WebApp closed as fallback');
+                    } catch(closeError) {
+                      debugLog('Failed to close WebApp: ' + closeError.message);
+                    }
+                      }
+                      
+                      // Закрываем WebApp
+                      setTimeout(() => {
+                        window.Telegram.WebApp.close();
+                        console.log('WebApp closed after PostMessage');
+                      }, 100);
+                      
+                    } catch(e2) {
+                      console.error('PostMessage method failed:', e2);
+                      // Последний fallback - просто закрываем
+                      window.Telegram.WebApp.close();
+                    }
+                  }
+                }
                 
               } catch(e) {
-                console.error('WebApp sendData failed:', e);
-                // Если отправка не удалась, просто закрываем
-                try {
-                  window.Telegram.WebApp.close();
-                  console.log('WebApp closed without data');
-                } catch(e2) {
-                  console.error('WebApp close failed:', e2);
-                }
+                console.error('All methods failed:', e);
+                // Последний fallback - просто закрываем
+                window.Telegram.WebApp.close();
               }
 
             } catch(e) {
@@ -330,6 +435,7 @@
   </script>
 </head>
 <body>
+<div class="debug" id="debug"></div>
 <div class="dist-wrapper">
   <div class="dist" id="dist">— м</div>
 </div>
