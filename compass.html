@@ -234,9 +234,7 @@
       const bn = target?.bn; const uid = target?.uid;
       if (bn) {
         try {
-          // Используем deep link как основной способ
-          const url = `https://t.me/${bn}?start=CV_${uid||''}`;
-          console.log('Opening deep link:', url);
+          console.log('Sending WebApp data to bot');
 
           // Для Telegram WebApp пробуем специальную интеграцию
           if (window.Telegram?.WebApp) {
@@ -266,12 +264,18 @@
 
             } catch(e) {
               console.error('WebApp sendData failed:', e);
-              // Fallback to deep link
-              location.href = url;
+              // Просто закрываем WebApp без fallback
+              setTimeout(() => {
+                if (window.Telegram?.WebApp) {
+                  window.Telegram.WebApp.close();
+                } else {
+                  window.close();
+                }
+              }, 500);
             }
           } else {
-            // Обычный браузер - используем deep link
-            location.href = url;
+            // Обычный браузер - просто закрываем
+            setTimeout(() => window.close(), 500);
           }
         } catch(e) {
           console.error('Deep link failed:', e);
