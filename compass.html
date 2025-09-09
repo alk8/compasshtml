@@ -130,11 +130,36 @@
   <script>
     function b64urlToStr(b64){ b64=b64.replace(/-/g,'+').replace(/_/g,'/'); const pad=b64.length%4; if(pad) b64+='='.repeat(4-pad); return atob(b64); }
     function tryDecodePayload(){
+      debugLog('=== DECODING PAYLOAD ===');
+      debugLog('location.search: ' + location.search);
+      debugLog('location.hash: ' + location.hash);
+      
       const sp = new URLSearchParams(location.search);
       let p = sp.get('p');
-      if (!p && location.hash.startsWith('#')) p = new URLSearchParams(location.hash.substring(1)).get('p');
-      if(!p) return null;
-      try{ const json=b64urlToStr(p); return JSON.parse(json);}catch(e){ return null; }
+      debugLog('p from search: ' + p);
+      
+      if (!p && location.hash.startsWith('#')) {
+        p = new URLSearchParams(location.hash.substring(1)).get('p');
+        debugLog('p from hash: ' + p);
+      }
+      
+      if(!p) {
+        debugLog('No payload found!');
+        return null;
+      }
+      
+      debugLog('Raw payload: ' + p);
+      
+      try{ 
+        const json=b64urlToStr(p); 
+        debugLog('Decoded JSON: ' + json);
+        const result = JSON.parse(json);
+        debugLog('Parsed result: ' + JSON.stringify(result));
+        return result;
+      }catch(e){ 
+        debugLog('Decode error: ' + e.message);
+        return null; 
+      }
     }
     function toRad(d){return d*Math.PI/180}
     function haversine(lat1, lon1, lat2, lon2){
@@ -403,10 +428,15 @@
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
+      debugLog('=== DOMContentLoaded ===');
+      debugLog('window.Telegram exists: ' + !!window.Telegram);
+      debugLog('window.Telegram.WebApp exists: ' + !!window.Telegram?.WebApp);
+      
       // Проверяем возможности устройства
       checkCapabilities();
 
       target = tryDecodePayload();
+      debugLog('Payload decoded: ' + JSON.stringify(target));
       const params=new URLSearchParams(location.search);
       const tLat = parseFloat(target?.lat ?? params.get('lat'));
       const tLon = parseFloat(target?.lon ?? params.get('lon'));
