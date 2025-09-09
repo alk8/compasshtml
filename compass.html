@@ -129,11 +129,55 @@
     function intervalSec(d){ if(d > D_MAX) return null; if(d <= D_MIN) return T_MIN; const y=normY(d); return T_MIN + (T_MAX - T_MIN) * y; }
     function toneHz(d){ const fMin=650,fMax=950; if(d>D_MAX) return fMin; const y=(d<=D_MIN)?0:normY(d); return Math.round(fMax - (fMax - fMin) * y); }
 
-    let audioCtx=null, masterGain=null;
-    function ensureAudio(){ if(audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)(); masterGain = audioCtx.createGain(); masterGain.gain.value=0; masterGain.connect(audioCtx.destination); }
-    function beepOnce(freq, gain, durMs=120){ if(!audioCtx) return; const osc=audioCtx.createOscillator(); const g=audioCtx.createGain(); osc.frequency.value=freq; osc.type='sine'; g.gain.setValueAtTime(0,audioCtx.currentTime); g.gain.linearRampToValueAtTime(gain,audioCtx.currentTime+0.01); g.gain.exponentialRampToValueAtTime(Math.max(1e-4,gain*0.001),audioCtx.currentTime+durMs/1000); osc.connect(g).connect(masterGain); osc.start(); osc.stop(audioCtx.currentTime+durMs/1000+0.02); }
+    let audioCtx=null, masterGain=null, audioSupported=true, vibrationSupported=true;
+    function ensureAudio(){
+        if(audioCtx) return;
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value=0;
+            masterGain.connect(audioCtx.destination);
+        } catch(e) {
+            console.warn('Audio not supported:', e);
+            audioSupported = false;
+        }
+    }
+    function beepOnce(freq, gain, durMs=120){
+        if(!audioCtx || !audioSupported) return;
+        const osc=audioCtx.createOscillator();
+        const g=audioCtx.createGain();
+        osc.frequency.value=freq;
+        osc.type='sine';
+        g.gain.setValueAtTime(0,audioCtx.currentTime);
+        g.gain.linearRampToValueAtTime(gain,audioCtx.currentTime+0.01);
+        g.gain.exponentialRampToValueAtTime(Math.max(1e-4,gain*0.001),audioCtx.currentTime+durMs/1000);
+        osc.connect(g).connect(masterGain);
+        osc.start();
+        osc.stop(audioCtx.currentTime+durMs/1000+0.02);
+    }
 
     let target=null, lastD=null, timer=null, lastBeepAt=0, allowSound=false, fired=false;
+
+    function checkCapabilities(){
+        // Проверяем поддержку вибрации
+        vibrationSupported = 'vibrate' in navigator && typeof navigator.vibrate === 'function';
+
+        // Проверяем поддержку звука
+        audioSupported = !!(window.AudioContext || window.webkitAudioContext);
+
+        // Скрываем настройки если не поддерживаются
+        const soundRow = document.querySelector('.row:nth-child(1)');
+        const vibRow = document.querySelector('.row:nth-child(2)');
+
+        if (!audioSupported && soundRow) {
+            soundRow.style.display = 'none';
+        }
+        if (!vibrationSupported && vibRow) {
+            vibRow.style.display = 'none';
+        }
+
+        console.log('Capabilities:', { audio: audioSupported, vibration: vibrationSupported });
+    }
 
     function setBg(dist, radius){
       const max = Math.max(radius*10, 200);
@@ -155,33 +199,31 @@
       if(now - lastBeepAt >= t*1000 - 20){
         lastBeepAt = now;
 
-        // Звук с fallback для Telegram Web
-        if(snd && allowSound){
+        // Звук с проверкой поддержки
+        if(snd && allowSound && audioSupported){
           try {
             ensureAudio();
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            masterGain.gain.value=vol;
+            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            if(masterGain) masterGain.gain.value=vol;
             const gain = (lastD>D_MAX?0:(lastD<=D_MIN?0.16:0.06+(0.16-0.06)*(1-normY(lastD))));
             beepOnce(toneHz(lastD), gain*vol/0.12);
           } catch(e) {
             console.warn('Audio failed:', e);
-            // Fallback: можем показать визуальный сигнал
+            // Fallback: визуальный сигнал
             document.body.style.animation = 'none';
             setTimeout(() => document.body.style.animation = 'pulse 2.5s infinite', 100);
           }
         }
 
         // Вибрация с проверкой поддержки
-        if(vib && navigator.vibrate){
+        if(vib && vibrationSupported && navigator.vibrate){
           try {
             navigator.vibrate(50);
           } catch(e) {
             console.warn('Vibration failed:', e);
-            // Fallback: можем использовать визуальный сигнал
-            if (navigator.vibrate === undefined) {
-              document.body.style.animation = 'none';
-              setTimeout(() => document.body.style.animation = 'pulse 1s infinite', 100);
-            }
+            // Fallback: визуальный сигнал
+            document.body.style.animation = 'none';
+            setTimeout(() => document.body.style.animation = 'pulse 1s infinite', 100);
           }
         }
       }
@@ -192,39 +234,60 @@
       const bn = target?.bn; const uid = target?.uid;
       if (bn) {
         try {
-          // Всегда используем deep link для надежности
+          // Используем deep link как основной способ
           const url = `https://t.me/${bn}?start=CV_${uid||''}`;
           console.log('Opening deep link:', url);
 
-          // Для Telegram WebApp отправим данные через WebApp
+          // Для Telegram WebApp пробуем специальную интеграцию
           if (window.Telegram?.WebApp) {
-            console.log('Detected Telegram WebApp, sending data...');
+            console.log('Detected Telegram WebApp');
+
+            // Попробуем отправить данные через WebApp (если поддерживается)
             try {
-              window.Telegram.WebApp.sendData(`webapp:${JSON.stringify({
+              const webappData = JSON.stringify({
                 action: 'compass_success',
                 uid: uid,
                 timestamp: Date.now(),
                 type: 'compass_arrival'
-              })}`);
+              });
+
+              // Отправляем данные через WebApp
+              window.Telegram.WebApp.sendData(webappData);
               console.log('WebApp data sent successfully');
+
+              // Закрываем WebApp через небольшую задержку
+              setTimeout(() => {
+                if (window.Telegram?.WebApp) {
+                  window.Telegram.WebApp.close();
+                } else {
+                  window.close();
+                }
+              }, 500);
+
             } catch(e) {
-              console.error('Failed to send WebApp data:', e);
+              console.error('WebApp sendData failed:', e);
               // Fallback to deep link
               location.href = url;
             }
           } else {
-            // Обычный deep link для обычных браузеров
+            // Обычный браузер - используем deep link
             location.href = url;
           }
         } catch(e) {
           console.error('Deep link failed:', e);
           // Fallback: просто закроем окно
+          setTimeout(() => window.close(), 1000);
         }
+      } else {
+        // Если нет данных бота, просто закрываем
+        setTimeout(() => window.close(), 1000);
       }
-      setTimeout(()=>window.close(), 1000);
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
+      // Проверяем возможности устройства
+      checkCapabilities();
+
       target = tryDecodePayload();
       const params=new URLSearchParams(location.search);
       const tLat = parseFloat(target?.lat ?? params.get('lat'));
