@@ -250,17 +250,26 @@
               });
 
               // Отправляем данные через WebApp
-              window.Telegram.WebApp.sendData(webappData);
-              console.log('WebApp data sent successfully');
-
-              // Закрываем WebApp через небольшую задержку
-              setTimeout(() => {
-                if (window.Telegram?.WebApp) {
+              console.log('Attempting to send WebApp data:', webappData);
+              
+              try {
+                window.Telegram.WebApp.sendData(webappData);
+                console.log('WebApp data sent successfully');
+                
+                // Сразу закрываем WebApp после отправки данных
+                window.Telegram.WebApp.close();
+                console.log('WebApp closed after sending data');
+                
+              } catch(e) {
+                console.error('WebApp sendData failed:', e);
+                // Если отправка не удалась, просто закрываем
+                try {
                   window.Telegram.WebApp.close();
-                } else {
-                  window.close();
+                  console.log('WebApp closed without data');
+                } catch(e2) {
+                  console.error('WebApp close failed:', e2);
                 }
-              }, 500);
+              }
 
             } catch(e) {
               console.error('WebApp sendData failed:', e);
