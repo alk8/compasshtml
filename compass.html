@@ -302,12 +302,76 @@
 <div class="info" id="info">Инициализация…</div>
 
   <div style="position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+    <button onclick="runFullTest()" style="padding: 10px; background: #8a2be2; border: none; border-radius: 5px; color: white; font-weight: bold;">🚀 Полный тест</button>
     <button onclick="notifyBot(123456789)" style="padding: 10px; background: #00ff80; border: none; border-radius: 5px; color: black; font-weight: bold;">Тест sendData</button>
     <button onclick="sendDebugMessage()" style="padding: 10px; background: #ffa500; border: none; border-radius: 5px; color: white; font-weight: bold;">Отправить в чат</button>
     <button onclick="simulateArrival()" style="padding: 10px; background: #ff6b6b; border: none; border-radius: 5px; color: white; font-weight: bold;">Симулировать прибытие</button>
   </div>
 
   <script>
+    function runFullTest() {
+      debugLog("=== RUNNING FULL TEST ===");
+
+      // Тест 1: Проверка WebApp
+      debugLog("1. WebApp check:");
+      debugLog("   - Telegram: " + !!window.Telegram);
+      debugLog("   - WebApp: " + !!window.Telegram?.WebApp);
+      if (window.Telegram?.WebApp) {
+        debugLog("   - sendData: " + typeof window.Telegram.WebApp.sendData);
+        debugLog("   - close: " + typeof window.Telegram.WebApp.close);
+        debugLog("   - ready: " + typeof window.Telegram.WebApp.ready);
+      }
+
+      // Тест 2: Проверка payload
+      debugLog("2. Payload check:");
+      const payload = tryDecodePayload();
+      debugLog("   - Payload: " + JSON.stringify(payload));
+      if (payload) {
+        debugLog("   - lat: " + payload.lat);
+        debugLog("   - lon: " + payload.lon);
+        debugLog("   - uid: " + payload.uid);
+        debugLog("   - bn: " + payload.bn);
+      }
+
+      // Тест 3: Проверка геолокации
+      debugLog("3. Geolocation check:");
+      if ('geolocation' in navigator) {
+        debugLog("   - Geolocation supported");
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            debugLog("   - Current position: " + pos.coords.latitude + ", " + pos.coords.longitude);
+          },
+          (err) => {
+            debugLog("   - Geolocation error: " + err.message);
+          }
+        );
+      } else {
+        debugLog("   - Geolocation NOT supported");
+      }
+
+      // Тест 4: Проверка sendData
+      debugLog("4. Testing sendData...");
+      const testData = JSON.stringify({
+        action: 'compass_success',
+        uid: 123456789,
+        ts: Date.now()
+      });
+      debugLog("   - Test data: " + testData);
+
+      if (window.Telegram?.WebApp?.sendData) {
+        try {
+          window.Telegram.WebApp.sendData(testData);
+          debugLog("   - ✅ sendData succeeded");
+        } catch(e) {
+          debugLog("   - ❌ sendData failed: " + e.message);
+        }
+      } else {
+        debugLog("   - ❌ sendData not available");
+      }
+
+      debugLog("=== TEST COMPLETE ===");
+    }
+
     function simulateArrival() {
       debugLog("=== SIMULATING ARRIVAL ===");
       document.getElementById('info').textContent = '🎯 ДОСТИГНУТА ТОЧКА!';
@@ -329,8 +393,9 @@
       if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
         // Получаем bot username из initData или используем известный
         try {
-          // Пробуем получить из initData
-          let botUsername = 'TestBot'; // заменить на реальный username бота
+          // Пробуем получить из payload или initData
+          let botUsername = payload?.bn || 'TestBot'; // из payload
+          debugLog("Bot username from payload: " + botUsername);
 
           // Если можем распарсить initData, попробуем найти username
           try {
