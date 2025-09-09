@@ -67,18 +67,44 @@
       if (pad) b64 += '='.repeat(4-pad);
       return atob(b64);
     }
+
+    // Тестовая функция для проверки payload
+    function testDecode(){
+      // Пример payload который должен генерироваться в боте
+      const testPayload = "eyJsYXQiOjU1LjIzNCwibG9uIjozNy42NTYsInIiOjE1LCJhZyI6IjEyMzQtYWJjZC0xMjM0IiwidG0iOiI1Njc4LWVmZ2gtNTY3OCIsImJuIjoiVGVzdEJvdCIsInVpZCI6MTIzNDU2Nzg5fQ";
+      debugLog("=== TEST DECODE ===");
+      debugLog("Test payload: " + testPayload);
+
+      try {
+        const json = b64urlToStr(testPayload);
+        debugLog("Decoded JSON: " + json);
+        const result = JSON.parse(json);
+        debugLog("Parsed: lat=" + result.lat + ", lon=" + result.lon + ", uid=" + result.uid);
+      } catch(e) {
+        debugLog("Test decode error: " + e.message);
+      }
+    }
     function tryDecodePayload(){
       const sp = new URLSearchParams(location.search);
       let p = sp.get('p');
       if (!p && location.hash.startsWith('#')) {
         p = new URLSearchParams(location.hash.substring(1)).get('p');
       }
-      if (!p) return null;
+      if (!p) {
+        debugLog('Нет параметра p в URL!');
+        return null;
+      }
+
+      debugLog('Найден payload: ' + p);
       try {
         const json = b64urlToStr(p);
-        return JSON.parse(json);
+        debugLog('Декодированный JSON: ' + json);
+        const result = JSON.parse(json);
+        debugLog('Распарсенный payload: lat=' + result.lat + ', lon=' + result.lon + ', uid=' + result.uid);
+        return result;
       } catch(e) {
-        debugLog('Ошибка декодирования payload: ' + e.message);
+        debugLog('Ошибка декодирования: ' + e.message);
+        debugLog('Raw payload: ' + p);
         return null;
       }
     }
@@ -103,33 +129,66 @@
 
     // === УВЕДОМЛЕНИЕ БОТА ===
     function notifyBot(uid){
-      debugLog("Пробуем оповестить бота, uid="+uid);
+      debugLog("=== NOTIFY BOT ===");
+      debugLog("uid: " + uid);
+      debugLog("Telegram.WebApp exists: " + !!window.Telegram?.WebApp);
+
       if (window.Telegram?.WebApp) {
         try {
+          debugLog("WebApp ready()");
           window.Telegram.WebApp.ready();
+
           const data = JSON.stringify({
             action: 'compass_success',
             uid: uid,
             ts: Date.now()
           });
+          debugLog("Data to send: " + data);
+
           if (typeof window.Telegram.WebApp.sendData === 'function') {
+            debugLog("Calling sendData...");
             window.Telegram.WebApp.sendData(data);
-            debugLog("Отправлено через sendData");
+            debugLog("sendData called successfully");
+          } else {
+            debugLog("sendData function not available!");
           }
+
+          debugLog("Closing WebApp...");
           window.Telegram.WebApp.close();
         } catch(e){
-          debugLog("Ошибка WebApp: " + e.message);
+          debugLog("WebApp ERROR: " + e.message);
+          debugLog("Closing window...");
           window.close();
         }
       } else {
-        debugLog("Не WebApp, просто закрываем окно");
+        debugLog("Not a WebApp, closing window");
         setTimeout(()=>window.close(), 1000);
       }
     }
 
     // === MAIN ===
     window.addEventListener('DOMContentLoaded', ()=>{
+      debugLog("=== PAGE LOADED ===");
+
+      // Проверяем WebApp
+      debugLog("window.Telegram: " + !!window.Telegram);
+      if (window.Telegram) {
+        debugLog("window.Telegram.WebApp: " + !!window.Telegram.WebApp);
+        if (window.Telegram.WebApp) {
+          debugLog("WebApp ready: " + typeof window.Telegram.WebApp.ready);
+          debugLog("WebApp sendData: " + typeof window.Telegram.WebApp.sendData);
+          debugLog("WebApp close: " + typeof window.Telegram.WebApp.close);
+        }
+      }
+
+      // Сначала тест декодирования
+      testDecode();
+
       debugLog("=== init ===");
+      debugLog("URL: " + location.href);
+      debugLog("search: " + location.search);
+      debugLog("hash: " + location.hash);
+
       const params = new URLSearchParams(location.search);
       const payload = tryDecodePayload();
 
@@ -137,6 +196,12 @@
       const tLon = parseFloat(payload?.lon ?? params.get('lon'));
       const radius = parseInt(payload?.r ?? params.get('r') ?? 15, 10);
       const uid = payload?.uid ?? params.get('uid');
+
+      debugLog("Итоговые значения:");
+      debugLog("tLat: " + tLat + " (из payload: " + payload?.lat + ", из params: " + params.get('lat') + ")");
+      debugLog("tLon: " + tLon + " (из payload: " + payload?.lon + ", из params: " + params.get('lon') + ")");
+      debugLog("radius: " + radius + " (из payload: " + payload?.r + ", из params: " + params.get('r') + ")");
+      debugLog("uid: " + uid + " (из payload: " + payload?.uid + ", из params: " + params.get('uid') + ")");
 
       const distEl=document.getElementById('dist');
       const infoEl=document.getElementById('info');
@@ -172,9 +237,13 @@
     });
   </script>
 </head>
-<body>
-<div class="debug" id="debug"></div>
-<div class="dist-wrapper"><div class="dist" id="dist">— м</div></div>
-<div class="info" id="info">Инициализация…</div>
+  <body>
+  <div class="debug" id="debug"></div>
+  <div class="dist-wrapper"><div class="dist" id="dist">— м</div></div>
+  <div class="info" id="info">Инициализация…</div>
+
+  <div style="position: fixed; bottom: 20px; right: 20px;">
+    <button onclick="notifyBot(123456789)" style="padding: 10px; background: #00ff80; border: none; border-radius: 5px; color: black; font-weight: bold;">Тест отправки</button>
+  </div>
 </body>
 </html>
