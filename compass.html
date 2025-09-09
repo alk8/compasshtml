@@ -1,19 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>Test WebApp</title>
+  <meta charset="UTF-8">
+  <title>Компас</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Telegram WebApp API -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      background: #f9fafb;
+      color: #111827;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .card {
+      max-width: 420px;
+      margin: auto;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    #status {
+      margin: 1rem 0;
+      font-size: 1rem;
+    }
+    #dist {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin: 1rem 0;
+    }
+  </style>
 </head>
 <body>
-  <h1>WebApp test</h1>
+  <div class="card">
+    <h1>🧭 Компас</h1>
+    <p id="status">Инициализация…</p>
+    <p id="dist">— м</p>
+  </div>
+
   <script>
-    if (window.Telegram && window.Telegram.WebApp) {
-      document.body.innerHTML += "<p>✅ Telegram WebApp API найден!</p>";
-      console.log("✅ WebApp API найден", window.Telegram.WebApp);
+    function b64urlToStr(b64) {
+      b64 = b64.replace(/-/g,'+').replace(/_/g,'/');
+      const pad = b64.length % 4;
+      if (pad) b64 += '='.repeat(4 - pad);
+      return atob(b64);
+    }
+    function tryDecodePayload() {
+      const sp = new URLSearchParams(location.search);
+      let p = sp.get('p');
+      if (!p && location.hash.startsWith('#')) {
+        p = new URLSearchParams(location.hash.substring(1)).get('p');
+      }
+      if (!p) return null;
+      try {
+        const json = b64urlToStr(p);
+        return JSON.parse(json);
+      } catch(e) {
+        return null;
+      }
+    }
+
+    function toRad(d){ return d * Math.PI / 180; }
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return Math.round(R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
+
+    const target = tryDecodePayload();
+    const params = new URLSearchParams(location.search);
+    const tLat = parseFloat(target?.lat ?? params.get("lat"));
+    const tLon = parseFloat(target?.lon ?? params.get("lon"));
+    const radius = parseInt(target?.r ?? params.get("r") ?? 15, 10);
+
+    const statusEl = document.getElementById("status");
+    const distEl = document.getElementById("dist");
+
+    if (isNaN(tLat) || isNaN(tLon)) {
+      statusEl.textContent = "❌ Некорректные координаты";
+    } else if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const d = haversine(latitude, longitude, tLat, tLon);
+          distEl.textContent = d + " м";
+          statusEl.textContent = "Радиус цели: " + radius + " м";
+
+          if (d <= radius) {
+            statusEl.textContent = "✅ Вы в зоне!";
+            tg.sendData(JSON.stringify({
+              status: "inside",
+              lat: latitude,
+              lon: longitude,
+              dist: d,
+              uid: target?.uid ?? null
+            }));
+            tg.close();
+          }
+        },
+        (err) => {
+          statusEl.textContent = "Ошибка геолокации: " + err.message;
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
     } else {
-      document.body.innerHTML += "<p>❌ Telegram WebApp API не найден</p>";
-      console.log("❌ Telegram WebApp API не найден");
+      statusEl.textContent = "❌ Telegram WebApp API не найден";
     }
   </script>
 </body>
