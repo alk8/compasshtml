@@ -6,510 +6,141 @@
   <title>Компас</title>
   <style>
     body {
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: linear-gradient(160deg, #0c0f14 0%, #1a1f24 100%);
-      color: #e8e8e8;
+      background: #0e1117;
+      color: #f5f5f5;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      transition: background-color 300ms linear;
+      transition: background-color 200ms ease;
     }
 
-    .dist-wrapper {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      background: radial-gradient(circle at center, #1f252a, #13181c);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 20px rgba(0, 255, 128, 0.2);
-      position: relative;
-      animation: pulse 2.5s infinite;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 rgba(0,255,128,0.2); }
-      50% { box-shadow: 0 0 40px rgba(0,255,128,0.35); }
-      100% { box-shadow: 0 0 0 rgba(0,255,128,0.2); }
-    }
-    .dist {
-      font-size: 48px;
-      font-weight: 700;
+    .card {
+      background: #1a1f29;
+      border-radius: 16px;
+      padding: 24px 32px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
       text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .dist {
+      font-size: 64px;
+      font-weight: 700;
+      margin: 0 0 12px;
       letter-spacing: 1px;
     }
 
     .info {
-      margin-top: 14px;
       font-size: 14px;
-      opacity: 0.85;
-      text-align: center;
+      opacity: .85;
+      margin-bottom: 16px;
     }
 
-    .debug {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.8);
-      color: #00ff80;
-      padding: 10px;
-      font-size: 12px;
-      border-radius: 5px;
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 1000;
-      display: none;
-    }
-
-    .debug.show {
-      display: block;
-    }
-
-    .controls {
-      margin-top: 40px;
-      width: 90%;
-      max-width: 400px;
-      background: #181d22;
-      border: 1px solid #2a323a;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .controls h2 {
-      font-size: 14px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #9aa;
-      margin: 0;
-      text-align: center;
-    }
-
-    .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 15px;
-    }
-
-    .row label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-    }
-
-    .icon {
-      width: 18px;
-      height: 18px;
-      fill: #39d98a;
-      flex-shrink: 0;
-    }
-
-    input[type="checkbox"] {
-      accent-color: #39d98a;
-      width: 18px;
-      height: 18px;
-    }
-
-    input[type="range"] {
-      flex: 1;
-      accent-color: #39d98a;
+    .status {
+      font-size: 13px;
+      color: #9aa0a6;
     }
   </style>
   <script>
-    function b64urlToStr(b64){ b64=b64.replace(/-/g,'+').replace(/_/g,'/'); const pad=b64.length%4; if(pad) b64+='='.repeat(4-pad); return atob(b64); }
-    function tryDecodePayload(){
-      debugLog('=== DECODING PAYLOAD ===');
-      debugLog('location.search: ' + location.search);
-      debugLog('location.hash: ' + location.hash);
-      
-      const sp = new URLSearchParams(location.search);
-      let p = sp.get('p');
-      debugLog('p from search: ' + p);
-      
-      if (!p && location.hash.startsWith('#')) {
-        p = new URLSearchParams(location.hash.substring(1)).get('p');
-        debugLog('p from hash: ' + p);
-      }
-      
-      if(!p) {
-        debugLog('No payload found!');
-        return null;
-      }
-      
-      debugLog('Raw payload: ' + p);
-      
-      try{ 
-        const json=b64urlToStr(p); 
-        debugLog('Decoded JSON: ' + json);
-        const result = JSON.parse(json);
-        debugLog('Parsed result: ' + JSON.stringify(result));
-        return result;
-      }catch(e){ 
-        debugLog('Decode error: ' + e.message);
-        return null; 
-      }
-    }
-    function toRad(d){return d*Math.PI/180}
-    function haversine(lat1, lon1, lat2, lon2){
-      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-      return Math.round(R*c);
+    function toRad(d){ return d * Math.PI / 180; }
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon/2)**2;
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
 
-    const T_MIN = 1.0, T_MAX = 5.0, D_MIN = 20, D_MAX = 1000, K = 9;
-    function normY(d){ const dClamped = Math.min(D_MAX, Math.max(D_MIN, d)); const x = (dClamped - D_MIN) / (D_MAX - D_MIN); return Math.log(1 + K * x) / Math.log(1 + K); }
-    function intervalSec(d){ if(d > D_MAX) return null; if(d <= D_MIN) return T_MIN; const y=normY(d); return T_MIN + (T_MAX - T_MIN) * y; }
-    function toneHz(d){ const fMin=650,fMax=950; if(d>D_MAX) return fMin; const y=(d<=D_MIN)?0:normY(d); return Math.round(fMax - (fMax - fMin) * y); }
-
-    let audioCtx=null, masterGain=null, audioSupported=true, vibrationSupported=true;
-    function ensureAudio(){
-        if(audioCtx) return;
-        try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value=0;
-            masterGain.connect(audioCtx.destination);
-        } catch(e) {
-            console.warn('Audio not supported:', e);
-            audioSupported = false;
+    function notifyBotSuccess(uid) {
+      try {
+        if (window.Telegram?.WebApp) {
+          window.Telegram.WebApp.sendData(`SUCCESS_${uid}`);
+          window.Telegram.WebApp.close();
+        } else {
+          console.warn("WebApp API недоступно, бот не уведомлен.");
         }
-    }
-    function beepOnce(freq, gain, durMs=120){
-        if(!audioCtx || !audioSupported) return;
-        const osc=audioCtx.createOscillator();
-        const g=audioCtx.createGain();
-        osc.frequency.value=freq;
-        osc.type='sine';
-        g.gain.setValueAtTime(0,audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(gain,audioCtx.currentTime+0.01);
-        g.gain.exponentialRampToValueAtTime(Math.max(1e-4,gain*0.001),audioCtx.currentTime+durMs/1000);
-        osc.connect(g).connect(masterGain);
-        osc.start();
-        osc.stop(audioCtx.currentTime+durMs/1000+0.02);
-    }
-
-    let target=null, lastD=null, timer=null, lastBeepAt=0, allowSound=false, fired=false;
-
-    function checkCapabilities(){
-        // Проверяем поддержку вибрации
-        vibrationSupported = 'vibrate' in navigator && typeof navigator.vibrate === 'function';
-
-        // Проверяем поддержку звука
-        audioSupported = !!(window.AudioContext || window.webkitAudioContext);
-
-        // Скрываем настройки если не поддерживаются
-        const soundRow = document.querySelector('.row:nth-child(1)');
-        const vibRow = document.querySelector('.row:nth-child(2)');
-
-        if (!audioSupported && soundRow) {
-            soundRow.style.display = 'none';
-        }
-        if (!vibrationSupported && vibRow) {
-            vibRow.style.display = 'none';
-        }
-
-        console.log('Capabilities:', { audio: audioSupported, vibration: vibrationSupported });
-    }
-
-    function setBg(dist, radius){
-      const max = Math.max(radius*10, 200);
-      const t = Math.max(0, Math.min(1, 1 - dist/max));
-      const r = Math.round(30 + (1-t)*120);
-      const g = Math.round(40 + t*180);
-      const b = 30;
-      document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-    }
-    function schedule(ms){ if(timer) clearTimeout(timer); timer=setTimeout(tick, Math.max(100, ms|0)); }
-    function tick(){
-      const snd = document.getElementById('snd').checked;
-      const vib = document.getElementById('vib').checked;
-      const vol = parseFloat(document.getElementById('vol').value||'0.12');
-      if(!lastD){ schedule(500); return; }
-      const t = intervalSec(lastD);
-      if(t == null){ schedule(500); return; }
-      const now=performance.now();
-      if(now - lastBeepAt >= t*1000 - 20){
-        lastBeepAt = now;
-
-        // Звук с проверкой поддержки
-        if(snd && allowSound && audioSupported){
-          try {
-            ensureAudio();
-            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            if(masterGain) masterGain.gain.value=vol;
-            const gain = (lastD>D_MAX?0:(lastD<=D_MIN?0.16:0.06+(0.16-0.06)*(1-normY(lastD))));
-            beepOnce(toneHz(lastD), gain*vol/0.12);
-          } catch(e) {
-            console.warn('Audio failed:', e);
-            // Fallback: визуальный сигнал
-            document.body.style.animation = 'none';
-            setTimeout(() => document.body.style.animation = 'pulse 2.5s infinite', 100);
-          }
-        }
-
-        // Вибрация с проверкой поддержки
-        if(vib && vibrationSupported && navigator.vibrate){
-          try {
-            navigator.vibrate(50);
-          } catch(e) {
-            console.warn('Vibration failed:', e);
-            // Fallback: визуальный сигнал
-            document.body.style.animation = 'none';
-            setTimeout(() => document.body.style.animation = 'pulse 1s infinite', 100);
-          }
-        }
-      }
-      schedule(100);
-    }
-
-    function debugLog(message) {
-      console.log(message);
-      const debugEl = document.getElementById('debug');
-      if (debugEl) {
-        debugEl.innerHTML += message + '<br>';
-        debugEl.classList.add('show');
-        debugEl.scrollTop = debugEl.scrollHeight;
+      } catch (e) {
+        console.error("Ошибка при уведомлении бота:", e);
       }
     }
 
-    function deepLinkToBot(){
-      const bn = target?.bn; const uid = target?.uid;
-      if (bn) {
-        try {
-          debugLog('=== DEEPLINK DEBUG ===');
-          debugLog('Sending WebApp data to bot');
-          debugLog('window.Telegram exists: ' + !!window.Telegram);
-          debugLog('window.Telegram.WebApp exists: ' + !!window.Telegram?.WebApp);
+    let fired = false;
 
-          // Для Telegram WebApp пробуем специальную интеграцию
-          if (window.Telegram?.WebApp) {
-            debugLog('Detected Telegram WebApp');
-            debugLog('WebApp version: ' + window.Telegram.WebApp.version);
-            debugLog('WebApp platform: ' + window.Telegram.WebApp.platform);
-            debugLog('WebApp initData: ' + window.Telegram.WebApp.initData);
-            
-            // Инициализируем WebApp
-            window.Telegram.WebApp.ready();
-            debugLog('WebApp initialized');
-            debugLog('WebApp state: ' + window.Telegram.WebApp.isExpanded);
-            debugLog('WebApp theme: ' + window.Telegram.WebApp.colorScheme);
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(location.search);
+      const tLat = parseFloat(params.get('lat'));
+      const tLon = parseFloat(params.get('lon'));
+      const radius = parseInt(params.get('r') || 15, 10);
+      const uid = params.get('uid');
 
-            // Попробуем отправить данные через WebApp (если поддерживается)
-            try {
-              const webappData = JSON.stringify({
-                action: 'compass_success',
-                uid: uid,
-                timestamp: Date.now(),
-                type: 'compass_arrival'
-              });
+      const distEl = document.getElementById('dist');
+      const infoEl = document.getElementById('info');
+      const statusEl = document.getElementById('status');
 
-              // Отправляем данные через WebApp
-              debugLog('=== COMPASS SUCCESS DEBUG ===');
-              debugLog('Attempting to send WebApp data: ' + webappData);
-              debugLog('WebApp object: ' + !!window.Telegram?.WebApp);
-              debugLog('WebApp version: ' + window.Telegram?.WebApp?.version);
-              debugLog('WebApp platform: ' + window.Telegram?.WebApp?.platform);
-              debugLog('WebApp initData: ' + window.Telegram?.WebApp?.initData);
-              debugLog('sendData function: ' + typeof window.Telegram?.WebApp?.sendData);
-              debugLog('WebApp ready state: ' + window.Telegram?.WebApp?.isExpanded);
-              
-              // Попробуем отправить данные через WebApp
-              debugLog('Trying to send data via WebApp...');
-              
-              try {
-                // Способ 1: sendData (если доступен)
-                if (typeof window.Telegram.WebApp.sendData === 'function') {
-                  debugLog('Using sendData method');
-                  window.Telegram.WebApp.sendData(webappData);
-                  debugLog('Data sent via sendData');
-                  
-                  // Сразу закрываем WebApp
-                  window.Telegram.WebApp.close();
-                  debugLog('WebApp closed after data send');
-                  
-                } else {
-                  debugLog('sendData not available, trying events...');
-                  
-                  // Способ 2: Попробуем через события
-                  try {
-                    // Устанавливаем данные в WebApp
-                    window.Telegram.WebApp.data = webappData;
-                    debugLog('Data set in WebApp.data');
-                    
-                    // Попробуем триггернуть событие
-                    if (window.Telegram.WebApp.triggerEvent) {
-                      window.Telegram.WebApp.triggerEvent('compass_success', webappData);
-                      debugLog('Event triggered');
-                    }
-                    
-                    // Попробуем через MainButton но без показа
-                    window.Telegram.WebApp.MainButton.setText('Complete');
-                    window.Telegram.WebApp.MainButton.onClick(() => {
-                      console.log('Auto-triggered button click');
-                      window.Telegram.WebApp.close();
-                    });
-                    
-                    // Автоматически триггернем кнопку
-                    setTimeout(() => {
-                      debugLog('Auto-triggering button');
-                      window.Telegram.WebApp.MainButton.click();
-                    }, 100);
-                    
-                  } catch(e) {
-                    debugLog('Event method failed: ' + e.message);
-                    
-                    // Простой fallback - просто закрываем WebApp
-                    debugLog('WebApp methods failed, closing WebApp anyway');
-                    try {
-                      window.Telegram.WebApp.close();
-                      debugLog('WebApp closed as fallback');
-                    } catch(closeError) {
-                      debugLog('Failed to close WebApp: ' + closeError.message);
-                    }
-                      }
-                      
-                      // Закрываем WebApp
-                      setTimeout(() => {
-                        window.Telegram.WebApp.close();
-                        console.log('WebApp closed after PostMessage');
-                      }, 100);
-                      
-                    } catch(e2) {
-                      console.error('PostMessage method failed:', e2);
-                      // Последний fallback - просто закрываем
-                      window.Telegram.WebApp.close();
-                    }
-                  }
-                }
-                
-              } catch(e) {
-                console.error('All methods failed:', e);
-                // Последний fallback - просто закрываем
-                window.Telegram.WebApp.close();
-              }
-
-            } catch(e) {
-              console.error('WebApp sendData failed:', e);
-              // Просто закрываем WebApp без fallback
-              setTimeout(() => {
-                if (window.Telegram?.WebApp) {
-                  window.Telegram.WebApp.close();
-                } else {
-                  window.close();
-                }
-              }, 500);
-            }
-          } else {
-            // Обычный браузер - просто закрываем
-            setTimeout(() => window.close(), 500);
-          }
-        } catch(e) {
-          console.error('Deep link failed:', e);
-          // Fallback: просто закроем окно
-          setTimeout(() => window.close(), 1000);
-        }
-      } else {
-        // Если нет данных бота, просто закрываем
-        setTimeout(() => window.close(), 1000);
+      if (Number.isNaN(tLat) || Number.isNaN(tLon)) {
+        infoEl.textContent = 'Некорректные координаты';
+        return;
       }
-    }
 
-    window.addEventListener('DOMContentLoaded', ()=>{
-      debugLog('=== DOMContentLoaded ===');
-      debugLog('window.Telegram exists: ' + !!window.Telegram);
-      debugLog('window.Telegram.WebApp exists: ' + !!window.Telegram?.WebApp);
-      
-      // Проверяем возможности устройства
-      checkCapabilities();
-
-      target = tryDecodePayload();
-      debugLog('Payload decoded: ' + JSON.stringify(target));
-      const params=new URLSearchParams(location.search);
-      const tLat = parseFloat(target?.lat ?? params.get('lat'));
-      const tLon = parseFloat(target?.lon ?? params.get('lon'));
-      const radius = parseInt(target?.r ?? params.get('r') ?? 15, 10);
-      if (Number.isNaN(tLat) || Number.isNaN(tLon)) { document.getElementById('info').textContent = 'Некорректные координаты'; return; }
-
-      const distEl=document.getElementById('dist');
-      const info=document.getElementById('info');
-
-      debugLog('=== ИНИЦИАЛИЗАЦИЯ КОМПАСА ===');
-      debugLog(`Целевая точка: ${tLat}, ${tLon}`);
-      debugLog(`Радиус: ${radius}м`);
-      debugLog(`Bot: ${target?.bn}, UID: ${target?.uid}`);
-
-      if(!('geolocation' in navigator)){ 
-        debugLog('Геолокация не поддерживается');
-        info.textContent='Геолокация не поддерживается'; 
-        return; 
+      if (!('geolocation' in navigator)) {
+        infoEl.textContent = 'Геолокация не поддерживается';
+        return;
       }
-      
-      debugLog('Геолокация поддерживается, начинаем отслеживание...');
 
-      const onpos = (pos)=>{
-        const {latitude, longitude} = pos.coords;
-        const d=haversine(latitude, longitude, tLat, tLon);
-        lastD = d; distEl.textContent=d+" м"; info.textContent = "Радиус: "+radius+" м"; setBg(d, radius);
-        
-        // Отладка расстояния
-        debugLog(`Расстояние: ${d}м, Радиус: ${radius}м, fired: ${fired}`);
-        
-        if(!fired && d <= radius){ 
-          debugLog('=== ДОСТИГНУТА ТОЧКА! ===');
-          fired=true; 
-          deepLinkToBot(); 
+      function setBg(dist) {
+        const max = Math.max(radius * 10, 200);
+        const t = Math.max(0, Math.min(1, 1 - dist / max));
+        const r = Math.round(40 + (1 - t) * 120);
+        const g = Math.round(60 + t * 160);
+        const b = 40;
+        document.body.style.backgroundColor = `rgb(${r},${g},${b})`;
+      }
+
+      function onpos(pos) {
+        const { latitude, longitude } = pos.coords;
+        const d = haversine(latitude, longitude, tLat, tLon);
+        distEl.textContent = d + " м";
+        infoEl.textContent = "Радиус цели: " + radius + " м";
+        setBg(d);
+
+        if (!fired && d <= radius) {
+          fired = true;
+          notifyBotSuccess(uid);
         }
-      };
-      const onerr = (err)=>{ info.textContent='Ошибка геолокации: '+err.message; };
-      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true, maximumAge:0, timeout:10000});
-      setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
+      }
 
-      document.getElementById('vol').addEventListener('input', ()=>{ allowSound=true; ensureAudio(); audioCtx.resume(); });
+      function onerr(err) {
+        statusEl.textContent = "Ошибка геолокации: " + err.message;
+      }
 
-      schedule(200);
+      navigator.geolocation.watchPosition(onpos, onerr, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+      });
+
+      // страховочный опрос
+      setInterval(() => {
+        navigator.geolocation.getCurrentPosition(onpos, onerr, {
+          enableHighAccuracy: true
+        });
+      }, 5000);
     });
   </script>
 </head>
 <body>
-<div class="debug" id="debug"></div>
-<div class="dist-wrapper">
-  <div class="dist" id="dist">— м</div>
-</div>
-<div class="info" id="info">Инициализация…</div>
-
-<div class="controls">
-  <h2>Настройки</h2>
-  <div class="row">
-    <label>
-      <svg class="icon" viewBox="0 0 24 24"><path d="M4 9v6h4l5 5V4l-5 5H4zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>
-      <input id="snd" type="checkbox" checked/> Звук
-    </label>
+  <div class="card">
+    <div class="dist" id="dist">— м</div>
+    <div class="info" id="info">Ожидание геопозиции…</div>
+    <div class="status" id="status"></div>
   </div>
-  <div class="row">
-    <label>
-      <svg class="icon" viewBox="0 0 24 24"><path d="M16 1l-2 2 3 3 2-2-3-3zm-8 0L6 3l3 3 2-2-3-3zm12.95 7.05l-2-2-3 3 2 2 3-3zM2.05 8.05l3 3 2-2-3-3-2 2zM12 5a7 7 0 00-7 7h2a5 5 0 1110 0h2a7 7 0 00-7-7zm0 4a3 3 0 00-3 3h2a1 1 0 112 0h2a3 3 0 00-3-3z"/></svg>
-      <input id="vib" type="checkbox"/> Вибрация
-    </label>
-  </div>
-  <div class="row">
-    <label style="width:100%">
-      Сила сигнала
-      <input id="vol" style="width:100%" type="range" min="0" max="1" step="0.01" value="0.12"/>
-    </label>
-  </div>
-</div>
 </body>
 </html>
