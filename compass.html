@@ -101,11 +101,9 @@
           if (d <= radius) {
             statusEl.textContent = "✅ Вы в зоне!";
             tg.sendData(JSON.stringify({
-              status: "inside",
-              lat: latitude,
-              lon: longitude,
-              dist: d,
-              uid: target?.uid ?? null
+              action: "compass_success",
+              uid: target?.uid ?? null,
+              ts: Date.now()
             }));
             tg.close();
           }
