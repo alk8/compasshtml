@@ -19,31 +19,23 @@
       margin: 20px 0;
       font-weight: bold;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      background: #3b82f6;
-      color: white;
-    }
   </style>
 </head>
 <body>
   <h2>🧭 Компас</h2>
   <div id="distance">⏳ Определение координат...</div>
   <div id="status"></div>
-  <button onclick="closeApp()">Закрыть</button>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
     const tg = window.Telegram.WebApp;
-    tg.expand(); // растягиваем на весь экран
+    tg.expand();
 
-    // Парсим координаты цели из URL
+    // --- Парсим параметры ---
     const urlParams = new URLSearchParams(window.location.search);
     const targetLat = parseFloat(urlParams.get("lat"));
     const targetLon = parseFloat(urlParams.get("lon"));
+    const uid = urlParams.get("uid");
 
     const distanceEl = document.getElementById("distance");
     const statusEl = document.getElementById("status");
@@ -53,9 +45,9 @@
       const toRad = x => (x * Math.PI) / 180;
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      const a = Math.sin(dLat / 2) ** 2 +
                 Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
@@ -65,31 +57,25 @@
       const lon = position.coords.longitude;
       const dist = haversine(lat, lon, targetLat, targetLon);
 
-      distanceEl.textContent = `📏 Расстояние: ${dist.toFixed(1)} м`;
+      distanceEl.textContent = `📏 ${dist.toFixed(1)} м`;
 
       if (dist <= 15) {
-        statusEl.textContent = "✅ Вы вошли в зону!";
-        // Отправляем в формате, который ждёт бот
+        statusEl.textContent = "✅ Попадание в зону";
+
         tg.sendData(JSON.stringify({
           action: "compass_success",
-          uid: tg.initDataUnsafe.user.id,
-          ts: Date.now(),
-          lat: lat,
-          lon: lon,
-          dist: dist
+          uid: uid || tg.initDataUnsafe?.user?.id,
+          ts: Date.now()
         }));
+
         tg.close();
       } else {
-        statusEl.textContent = "❌ Вы ещё далеко...";
+        statusEl.textContent = "❌ Далеко...";
       }
     }
 
     function error(err) {
-      statusEl.textContent = "Ошибка геолокации: " + err.message;
-    }
-
-    function closeApp() {
-      tg.close();
+      statusEl.textContent = "Ошибка гео: " + err.message;
     }
 
     if (navigator.geolocation) {
