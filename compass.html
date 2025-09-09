@@ -139,22 +139,81 @@
           window.Telegram.WebApp.ready();
 
           const data = JSON.stringify({
-            action: 'compass_success',
-            uid: uid,
+                action: 'compass_success',
+                uid: uid,
             ts: Date.now()
           });
           debugLog("Data to send: " + data);
 
           if (typeof window.Telegram.WebApp.sendData === 'function') {
             debugLog("Calling sendData...");
-            window.Telegram.WebApp.sendData(data);
-            debugLog("sendData called successfully");
-          } else {
-            debugLog("sendData function not available!");
-          }
+            try {
+              window.Telegram.WebApp.sendData(data);
+              debugLog("✅ sendData called successfully");
 
-          debugLog("Closing WebApp...");
-          window.Telegram.WebApp.close();
+              // Ждем немного перед закрытием
+              setTimeout(() => {
+                debugLog("Closing WebApp...");
+                  window.Telegram.WebApp.close();
+                debugLog("✅ WebApp closed");
+              }, 500);
+
+            } catch(sendError) {
+              debugLog("❌ sendData ERROR: " + sendError.message);
+              setTimeout(() => window.close(), 1000);
+            }
+          } else {
+            debugLog("❌ sendData function not available!");
+            debugLog("Available functions: " + Object.keys(window.Telegram.WebApp).join(', '));
+
+            // Попробуем альтернативные методы
+            debugLog("Trying alternative methods...");
+
+            // Метод 1: postMessage
+            try {
+              if (window.parent && window.parent !== window) {
+                debugLog("Trying postMessage to parent");
+                window.parent.postMessage({
+                  type: 'web_app_data',
+                  data: data
+                }, '*');
+              }
+            } catch(e) {
+              debugLog("postMessage failed: " + e.message);
+            }
+
+            // Метод 2: Установка данных в WebApp
+            try {
+              if (window.Telegram.WebApp.data !== undefined) {
+                debugLog("Setting WebApp.data");
+                window.Telegram.WebApp.data = data;
+              }
+            } catch(e) {
+              debugLog("WebApp.data failed: " + e.message);
+            }
+
+            // Метод 3: Отправка отладочного сообщения через бота
+            try {
+              debugLog("Sending debug message to bot");
+              // Используем Telegram API для отправки сообщения
+              if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+                // Попробуем отправить через deep link или другим способом
+                const debugText = "DEBUG_WEBAPP:" + data;
+                const botUsername = "TestBot"; // заменить на реальный username бота
+
+                // Создаем ссылку для отправки сообщения боту
+                const debugUrl = `https://t.me/${botUsername}?text=${encodeURIComponent(debugText)}`;
+                debugLog("Debug URL: " + debugUrl);
+
+                // Открываем ссылку (это откроет Telegram с сообщением)
+                window.open(debugUrl, '_blank');
+              }
+            } catch(e) {
+              debugLog("Debug message failed: " + e.message);
+            }
+
+            setTimeout(() => window.close(), 1000);
+          }
         } catch(e){
           debugLog("WebApp ERROR: " + e.message);
           debugLog("Closing window...");
@@ -237,13 +296,66 @@
     });
   </script>
 </head>
-  <body>
+<body>
   <div class="debug" id="debug"></div>
   <div class="dist-wrapper"><div class="dist" id="dist">— м</div></div>
-  <div class="info" id="info">Инициализация…</div>
+<div class="info" id="info">Инициализация…</div>
 
-  <div style="position: fixed; bottom: 20px; right: 20px;">
-    <button onclick="notifyBot(123456789)" style="padding: 10px; background: #00ff80; border: none; border-radius: 5px; color: black; font-weight: bold;">Тест отправки</button>
+  <div style="position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+    <button onclick="notifyBot(123456789)" style="padding: 10px; background: #00ff80; border: none; border-radius: 5px; color: black; font-weight: bold;">Тест sendData</button>
+    <button onclick="sendDebugMessage()" style="padding: 10px; background: #ffa500; border: none; border-radius: 5px; color: white; font-weight: bold;">Отправить в чат</button>
+    <button onclick="simulateArrival()" style="padding: 10px; background: #ff6b6b; border: none; border-radius: 5px; color: white; font-weight: bold;">Симулировать прибытие</button>
   </div>
+
+  <script>
+    function simulateArrival() {
+      debugLog("=== SIMULATING ARRIVAL ===");
+      document.getElementById('info').textContent = '🎯 ДОСТИГНУТА ТОЧКА!';
+      notifyBot(123456789);
+    }
+
+    function sendDebugMessage() {
+      debugLog("=== SENDING DEBUG MESSAGE ===");
+      const data = JSON.stringify({
+        action: 'compass_success',
+        uid: 123456789,
+        ts: Date.now()
+      });
+
+      const debugText = "DEBUG_WEBAPP:" + data;
+      debugLog("Debug text: " + debugText);
+
+      // Отправляем сообщение боту
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+        // Получаем bot username из initData или используем известный
+        try {
+          // Пробуем получить из initData
+          let botUsername = 'TestBot'; // заменить на реальный username бота
+
+          // Если можем распарсить initData, попробуем найти username
+          try {
+            const initData = new URLSearchParams(window.Telegram.WebApp.initData);
+            const userData = initData.get('user');
+            if (userData) {
+              const user = JSON.parse(decodeURIComponent(userData));
+              debugLog("User data: " + JSON.stringify(user));
+            }
+          } catch(e) {
+            debugLog("Could not parse initData: " + e.message);
+          }
+
+          const debugUrl = `https://t.me/${botUsername}?text=${encodeURIComponent(debugText)}`;
+          debugLog("Opening: " + debugUrl);
+          window.open(debugUrl, '_blank');
+        } catch(e) {
+          debugLog("Error creating debug URL: " + e.message);
+        }
+      } else {
+        debugLog("No WebApp context, cannot send debug message");
+        // Fallback: просто показать текст для копирования
+        alert("Скопируй и отправь боту:\n" + debugText);
+      }
+    }
+  </script>
 </body>
 </html>
