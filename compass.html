@@ -416,13 +416,32 @@
       const distEl=document.getElementById('dist');
       const info=document.getElementById('info');
 
-      if(!('geolocation' in navigator)){ info.textContent='Геолокация не поддерживается'; return; }
+      debugLog('=== ИНИЦИАЛИЗАЦИЯ КОМПАСА ===');
+      debugLog(`Целевая точка: ${tLat}, ${tLon}`);
+      debugLog(`Радиус: ${radius}м`);
+      debugLog(`Bot: ${target?.bn}, UID: ${target?.uid}`);
+
+      if(!('geolocation' in navigator)){ 
+        debugLog('Геолокация не поддерживается');
+        info.textContent='Геолокация не поддерживается'; 
+        return; 
+      }
+      
+      debugLog('Геолокация поддерживается, начинаем отслеживание...');
 
       const onpos = (pos)=>{
         const {latitude, longitude} = pos.coords;
         const d=haversine(latitude, longitude, tLat, tLon);
         lastD = d; distEl.textContent=d+" м"; info.textContent = "Радиус: "+radius+" м"; setBg(d, radius);
-        if(!fired && d <= radius){ fired=true; deepLinkToBot(); }
+        
+        // Отладка расстояния
+        debugLog(`Расстояние: ${d}м, Радиус: ${radius}м, fired: ${fired}`);
+        
+        if(!fired && d <= radius){ 
+          debugLog('=== ДОСТИГНУТА ТОЧКА! ===');
+          fired=true; 
+          deepLinkToBot(); 
+        }
       };
       const onerr = (err)=>{ info.textContent='Ошибка геолокации: '+err.message; };
       navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true, maximumAge:0, timeout:10000});
