@@ -17,40 +17,234 @@
   <title>Компас</title>
   <style>
     body {
-      font-family: "Inter", sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
       margin: 0;
       padding: 0;
-      background: linear-gradient(160deg, #0c0f14 0%, #1a1f24 100%);
-      color: #e8e8e8;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+      color: #ffffff;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      overflow: hidden;
     }
 
-    .dist-wrapper {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      background: radial-gradient(circle at center, #1f252a, #13181c);
+    .compass-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .compass-wrapper {
+      width: 280px;
+      height: 280px;
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 20px rgba(0, 255, 128, 0.2);
-      position: relative;
-    }
-    .dist {
-      font-size: 48px;
-      font-weight: 700;
-      text-align: center;
     }
 
-    .info {
-      margin-top: 14px;
-      font-size: 14px;
-      opacity: 0.85;
+    .compass-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    .compass-ring:nth-child(1) {
+      width: 280px;
+      height: 280px;
+      animation-delay: 0s;
+    }
+
+    .compass-ring:nth-child(2) {
+      width: 240px;
+      height: 240px;
+      animation-delay: 0.5s;
+    }
+
+    .compass-ring:nth-child(3) {
+      width: 200px;
+      height: 200px;
+      animation-delay: 1s;
+    }
+
+    .compass-main {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1), transparent 50%),
+                  radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 70%),
+                  linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      backdrop-filter: blur(10px);
+      box-shadow: 
+        0 0 30px rgba(0, 150, 255, 0.3),
+        inset 0 0 30px rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .compass-main:hover {
+      transform: scale(1.02);
+      box-shadow: 
+        0 0 40px rgba(0, 150, 255, 0.4),
+        inset 0 0 40px rgba(255, 255, 255, 0.15);
+    }
+
+    .distance-display {
+      font-size: 42px;
+      font-weight: 300;
       text-align: center;
+      background: linear-gradient(45deg, #00d4ff, #ffffff, #00d4ff);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 3s ease-in-out infinite;
+      letter-spacing: -1px;
+      transition: all 0.3s ease;
+    }
+
+    .distance-display.far {
+      background: linear-gradient(45deg, #ff6b6b, #ffa500, #ff6b6b);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .distance-display.close {
+      background: linear-gradient(45deg, #51cf66, #40c057, #51cf66);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .info-panel {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 16px 24px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.8);
+      min-width: 200px;
+      transition: all 0.3s ease;
+    }
+
+    .info-panel:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00d4ff;
+      margin-right: 8px;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    .status-indicator.error {
+      background: #ff6b6b;
+    }
+
+    .status-indicator.success {
+      background: #51cf66;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+      }
+    }
+
+    @keyframes gradientShift {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    @keyframes blink {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .floating-particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(0, 212, 255, 0.6);
+      border-radius: 50%;
+      animation: float 6s linear infinite;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(100vh) translateX(0);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100px) translateX(50px);
+        opacity: 0;
+      }
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
   <script>
@@ -126,8 +320,39 @@
       }
     }
 
+    // === PARTICLE SYSTEM ===
+    function createParticles() {
+      const container = document.querySelector('.floating-particles');
+      if (!container) return;
+      
+      for (let i = 0; i < 15; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 6 + 's';
+        particle.style.animationDuration = (4 + Math.random() * 4) + 's';
+        container.appendChild(particle);
+      }
+    }
+
+    // === DISTANCE COLOR LOGIC ===
+    function updateDistanceColor(distance, radius) {
+      const distEl = document.getElementById('distance');
+      if (!distEl) return;
+      
+      distEl.classList.remove('far', 'close');
+      
+      if (distance > radius * 2) {
+        distEl.classList.add('far');
+      } else if (distance <= radius) {
+        distEl.classList.add('close');
+      }
+    }
+
     // === MAIN ===
     window.addEventListener('DOMContentLoaded', ()=>{
+      createParticles();
+      
       const payload = tryDecodePayload();
 
       const tLat = parseFloat(payload?.lat ?? new URLSearchParams(location.search).get('lat'));
@@ -135,40 +360,83 @@
       const radius = parseInt(payload?.r ?? new URLSearchParams(location.search).get('r') ?? 15, 10);
       const uid = payload?.uid ?? new URLSearchParams(location.search).get('uid');
 
-      const distEl=document.getElementById('dist');
-      const infoEl=document.getElementById('info');
+      const distEl = document.getElementById('distance');
+      const infoEl = document.getElementById('info');
+      const statusEl = document.getElementById('status');
 
       if (Number.isNaN(tLat) || Number.isNaN(tLon)){
-        infoEl.textContent="Некорректные координаты";
+        infoEl.innerHTML = '<span class="status-indicator error"></span>Некорректные координаты';
         return;
       }
 
-      let fired=false;
-      const onpos=(pos)=>{
+      let fired = false;
+      let lastDistance = null;
+      
+      const onpos = (pos) => {
         const {latitude, longitude} = pos.coords;
         const d = haversine(latitude, longitude, tLat, tLon);
-        distEl.textContent=d+" м";
-        infoEl.textContent="Радиус: "+radius+" м";
         
-        if(!fired && d <= radius){
-          fired=true;
+        // Плавная анимация изменения расстояния
+        if (lastDistance !== null && Math.abs(d - lastDistance) > 5) {
+          distEl.style.transform = 'scale(1.1)';
+          setTimeout(() => {
+            distEl.style.transform = 'scale(1)';
+          }, 150);
+        }
+        
+        distEl.textContent = d + " м";
+        updateDistanceColor(d, radius);
+        
+        infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
+        
+        if (!fired && d <= radius) {
+          fired = true;
+          statusEl.innerHTML = '<span class="status-indicator success"></span>Цель достигнута!';
+          distEl.classList.add('close');
           notifyBot(uid);
         }
+        
+        lastDistance = d;
       };
-      const onerr=(err)=>{ infoEl.textContent="Ошибка геолокации: "+err.message; };
+      
+      const onerr = (err) => { 
+        infoEl.innerHTML = `<span class="status-indicator error"></span>Ошибка геолокации: ${err.message}`;
+      };
 
-      if(!('geolocation' in navigator)){
-        infoEl.textContent="Геолокация не поддерживается";
+      if (!('geolocation' in navigator)) {
+        infoEl.innerHTML = '<span class="status-indicator error"></span>Геолокация не поддерживается';
         return;
       }
 
-      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy:true});
-      setInterval(()=>navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy:true}), 5000);
+      // Показываем загрузку
+      infoEl.innerHTML = '<span class="status-indicator"></span>Поиск местоположения...';
+
+      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy: true});
+      setInterval(() => navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy: true}), 5000);
     });
   </script>
 </head>
 <body>
-<div class="dist-wrapper"><div class="dist" id="dist">— м</div></div>
-<div class="info" id="info">Инициализация…</div>
+  <div class="floating-particles"></div>
+  
+  <div class="compass-container">
+    <div class="compass-wrapper">
+      <div class="compass-ring"></div>
+      <div class="compass-ring"></div>
+      <div class="compass-ring"></div>
+      
+      <div class="compass-main">
+        <div class="distance-display" id="distance">— м</div>
+      </div>
+    </div>
+    
+    <div class="info-panel" id="info">
+      <span class="status-indicator"></span>Инициализация…
+    </div>
+    
+    <div class="info-panel" id="status" style="display: none;">
+      <span class="status-indicator"></span>Готов к работе
+    </div>
+  </div>
 </body>
 </html>
