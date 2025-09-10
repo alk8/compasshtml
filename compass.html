@@ -50,27 +50,11 @@
 
     .compass-ring {
       position: absolute;
+      width: 180px;
+      height: 180px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.1);
-      animation: pulse 3s ease-in-out infinite;
-    }
-
-    .compass-ring:nth-child(1) {
-      width: 240px;
-      height: 240px;
-      animation-delay: 0s;
-    }
-
-    .compass-ring:nth-child(2) {
-      width: 200px;
-      height: 200px;
-      animation-delay: 0.5s;
-    }
-
-    .compass-ring:nth-child(3) {
-      width: 160px;
-      height: 160px;
-      animation-delay: 1s;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: pulseRing 2s ease-in-out infinite;
     }
 
     .compass-main {
@@ -113,67 +97,57 @@
       transition: all 0.3s ease;
     }
 
-    /* Цветовая индикация расстояния - яркая и заметная */
-    .compass-container.very-far {
-      background: radial-gradient(circle at center, rgba(255, 71, 87, 0.3) 0%, rgba(255, 56, 56, 0.1) 50%, transparent 70%);
-    }
-
-    .compass-container.far {
-      background: radial-gradient(circle at center, rgba(255, 165, 2, 0.3) 0%, rgba(255, 149, 0, 0.1) 50%, transparent 70%);
-    }
-
-    .compass-container.medium {
-      background: radial-gradient(circle at center, rgba(255, 215, 0, 0.3) 0%, rgba(255, 237, 78, 0.1) 50%, transparent 70%);
-    }
-
-    .compass-container.close {
-      background: radial-gradient(circle at center, rgba(81, 207, 102, 0.3) 0%, rgba(64, 192, 87, 0.1) 50%, transparent 70%);
-    }
-
+    /* Элегантная цветовая индикация расстояния */
     .distance-display.very-far {
-      color: #ff4757 !important;
-      text-shadow: 0 0 20px rgba(255, 71, 87, 0.8), 0 0 40px rgba(255, 71, 87, 0.4);
-      font-weight: bold;
+      color: #ff4757;
+      text-shadow: 0 0 15px rgba(255, 71, 87, 0.6);
     }
 
     .distance-display.far {
-      color: #ffa502 !important;
-      text-shadow: 0 0 20px rgba(255, 165, 2, 0.8), 0 0 40px rgba(255, 165, 2, 0.4);
-      font-weight: bold;
+      color: #ffa502;
+      text-shadow: 0 0 15px rgba(255, 165, 2, 0.6);
     }
 
     .distance-display.medium {
-      color: #ffd700 !important;
-      text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
-      font-weight: bold;
+      color: #ffd700;
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
     }
 
     .distance-display.close {
-      color: #51cf66 !important;
-      text-shadow: 0 0 20px rgba(81, 207, 102, 0.8), 0 0 40px rgba(81, 207, 102, 0.4);
-      font-weight: bold;
-      animation: pulse 1s ease-in-out infinite;
+      color: #51cf66;
+      text-shadow: 0 0 15px rgba(81, 207, 102, 0.6);
     }
 
-    /* Дополнительная индикация для колец компаса */
+    /* Пульсирующие кольца с цветовой индикацией */
     .compass-ring.very-far {
-      border-color: rgba(255, 71, 87, 0.6) !important;
-      box-shadow: 0 0 20px rgba(255, 71, 87, 0.4) !important;
+      border-color: rgba(255, 71, 87, 0.4);
+      animation: pulseRing 2s ease-in-out infinite;
     }
 
     .compass-ring.far {
-      border-color: rgba(255, 165, 2, 0.6) !important;
-      box-shadow: 0 0 20px rgba(255, 165, 2, 0.4) !important;
+      border-color: rgba(255, 165, 2, 0.4);
+      animation: pulseRing 2s ease-in-out infinite;
     }
 
     .compass-ring.medium {
-      border-color: rgba(255, 215, 0, 0.6) !important;
-      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4) !important;
+      border-color: rgba(255, 215, 0, 0.4);
+      animation: pulseRing 2s ease-in-out infinite;
     }
 
     .compass-ring.close {
-      border-color: rgba(81, 207, 102, 0.6) !important;
-      box-shadow: 0 0 20px rgba(81, 207, 102, 0.4) !important;
+      border-color: rgba(81, 207, 102, 0.4);
+      animation: pulseRing 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulseRing {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
     }
 
     .info-panel {
@@ -243,41 +217,6 @@
       }
     }
 
-    .floating-particles {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    .particle {
-      position: absolute;
-      width: 2px;
-      height: 2px;
-      background: rgba(0, 212, 255, 0.6);
-      border-radius: 50%;
-      animation: float 6s linear infinite;
-    }
-
-    @keyframes float {
-      0% {
-        transform: translateY(100vh) translateX(0);
-        opacity: 0;
-      }
-      10% {
-        opacity: 1;
-      }
-      90% {
-        opacity: 1;
-      }
-      100% {
-        transform: translateY(-100px) translateX(50px);
-        opacity: 0;
-      }
-    }
 
     .loading-spinner {
       width: 40px;
@@ -367,20 +306,6 @@
       }
     }
 
-    // === PARTICLE SYSTEM ===
-    function createParticles() {
-      const container = document.querySelector('.floating-particles');
-      if (!container) return;
-      
-      for (let i = 0; i < 15; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 6 + 's';
-        particle.style.animationDuration = (4 + Math.random() * 4) + 's';
-        container.appendChild(particle);
-      }
-    }
 
     // === DISTANCE COLOR LOGIC ===
     function updateDistanceColor(distance, radius) {
@@ -422,7 +347,6 @@
 
     // === MAIN ===
     window.addEventListener('DOMContentLoaded', ()=>{
-      createParticles();
       
       const payload = tryDecodePayload();
 
@@ -488,18 +412,14 @@
   </script>
 </head>
 <body>
-  <div class="floating-particles"></div>
-  
   <div class="compass-container">
     <div class="compass-wrapper">
-      <div class="compass-ring"></div>
-      <div class="compass-ring"></div>
       <div class="compass-ring"></div>
       
       <div class="compass-main">
         <div class="distance-display" id="distance">— м</div>
       </div>
-  </div>
+    </div>
 
     <div class="info-panel" id="info">
       <span class="status-indicator"></span>Инициализация…
