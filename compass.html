@@ -113,37 +113,67 @@
       transition: all 0.3s ease;
     }
 
+    /* Цветовая индикация расстояния - яркая и заметная */
+    .compass-container.very-far {
+      background: radial-gradient(circle at center, rgba(255, 71, 87, 0.3) 0%, rgba(255, 56, 56, 0.1) 50%, transparent 70%);
+    }
+
+    .compass-container.far {
+      background: radial-gradient(circle at center, rgba(255, 165, 2, 0.3) 0%, rgba(255, 149, 0, 0.1) 50%, transparent 70%);
+    }
+
+    .compass-container.medium {
+      background: radial-gradient(circle at center, rgba(255, 215, 0, 0.3) 0%, rgba(255, 237, 78, 0.1) 50%, transparent 70%);
+    }
+
+    .compass-container.close {
+      background: radial-gradient(circle at center, rgba(81, 207, 102, 0.3) 0%, rgba(64, 192, 87, 0.1) 50%, transparent 70%);
+    }
+
     .distance-display.very-far {
-      background: linear-gradient(45deg, #ff4757, #ff3838, #ff4757);
-      background-size: 200% 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #ff4757 !important;
+      text-shadow: 0 0 20px rgba(255, 71, 87, 0.8), 0 0 40px rgba(255, 71, 87, 0.4);
+      font-weight: bold;
     }
 
     .distance-display.far {
-      background: linear-gradient(45deg, #ffa502, #ff9500, #ffa502);
-      background-size: 200% 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #ffa502 !important;
+      text-shadow: 0 0 20px rgba(255, 165, 2, 0.8), 0 0 40px rgba(255, 165, 2, 0.4);
+      font-weight: bold;
     }
 
     .distance-display.medium {
-      background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700);
-      background-size: 200% 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #ffd700 !important;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
+      font-weight: bold;
     }
 
     .distance-display.close {
-      background: linear-gradient(45deg, #51cf66, #40c057, #51cf66);
-      background-size: 200% 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #51cf66 !important;
+      text-shadow: 0 0 20px rgba(81, 207, 102, 0.8), 0 0 40px rgba(81, 207, 102, 0.4);
+      font-weight: bold;
       animation: pulse 1s ease-in-out infinite;
+    }
+
+    /* Дополнительная индикация для колец компаса */
+    .compass-ring.very-far {
+      border-color: rgba(255, 71, 87, 0.6) !important;
+      box-shadow: 0 0 20px rgba(255, 71, 87, 0.4) !important;
+    }
+
+    .compass-ring.far {
+      border-color: rgba(255, 165, 2, 0.6) !important;
+      box-shadow: 0 0 20px rgba(255, 165, 2, 0.4) !important;
+    }
+
+    .compass-ring.medium {
+      border-color: rgba(255, 215, 0, 0.6) !important;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4) !important;
+    }
+
+    .compass-ring.close {
+      border-color: rgba(81, 207, 102, 0.6) !important;
+      box-shadow: 0 0 20px rgba(81, 207, 102, 0.4) !important;
     }
 
     .info-panel {
@@ -355,24 +385,39 @@
     // === DISTANCE COLOR LOGIC ===
     function updateDistanceColor(distance, radius) {
       const distEl = document.getElementById('distance');
-      if (!distEl) return;
+      const containerEl = document.querySelector('.compass-container');
+      const ringsEl = document.querySelectorAll('.compass-ring');
+      
+      if (!distEl || !containerEl) return;
       
       // Убираем все классы цветов
       distEl.classList.remove('very-far', 'far', 'medium', 'close');
+      containerEl.classList.remove('very-far', 'far', 'medium', 'close');
+      ringsEl.forEach(ring => {
+        ring.classList.remove('very-far', 'far', 'medium', 'close');
+      });
       
+      let colorClass = '';
       if (distance > 2000) {
         // Больше 2 км - красный
-        distEl.classList.add('very-far');
+        colorClass = 'very-far';
       } else if (distance > 1000) {
         // От 1 до 2 км - оранжевый
-        distEl.classList.add('far');
+        colorClass = 'far';
       } else if (distance > radius) {
         // От радиуса до 1 км - желтый
-        distEl.classList.add('medium');
+        colorClass = 'medium';
       } else {
         // В радиусе - зеленый
-        distEl.classList.add('close');
+        colorClass = 'close';
       }
+      
+      // Применяем цветовую индикацию ко всем элементам
+      distEl.classList.add(colorClass);
+      containerEl.classList.add(colorClass);
+      ringsEl.forEach(ring => {
+        ring.classList.add(colorClass);
+      });
     }
 
     // === MAIN ===
