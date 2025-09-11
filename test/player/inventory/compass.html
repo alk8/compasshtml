@@ -11,7 +11,7 @@
   <!-- Telegram WebApp specific meta tags -->
   <meta name="telegram:web_app" content="true"/>
   <meta name="telegram:web_app:version" content="6.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:; media-src 'self' https: data: blob:;">
   <!-- Telegram WebApp API -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <title>Компас</title>
@@ -533,7 +533,9 @@
     // === РАННЯЯ ИНИЦИАЛИЗАЦИЯ WEBAPP ===
     (function() {
       if (window.Telegram && window.Telegram.WebApp) {
-        window.Telegram.WebApp.ready();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
       }
     })();
 
@@ -987,10 +989,13 @@
     const _soundBtn = document.getElementById('soundBtn');
     const _pelengatorBtn = document.getElementById('pelengatorBtn');
 
-    // Простая кнопка звука (как в рабочем коде)
     function _updateSoundButtonUI() {
       _soundBtn.textContent = _isSoundOn ? '🔇 Отключить звук' : '🔊 Включить звук';
       _soundBtn.classList.toggle('disabled', _isSoundOn);
+    }
+    function _updatePelengatorButtonUI() {
+      _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
+      _pelengatorBtn.classList.toggle('disabled', _isPelengatorOn);
     }
 
     function _stopAllAudio() {
@@ -1042,21 +1047,15 @@
       }
     }
 
-    _soundBtn.addEventListener("click", _soundButtonHandler);
-
-    // Обработчик пеленгатора (упрощенный)
-    function _updatePelengatorButtonUI() {
-      _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
-      _pelengatorBtn.classList.toggle('disabled', _isPelengatorOn);
-    }
-
     function _pelengatorButtonHandler() {
       _isPelengatorOn = !_isPelengatorOn;
       _updatePelengatorButtonUI();
       if (_isPelengatorOn && !_isSoundOn) _soundButtonHandler();
     }
 
+    _soundBtn.addEventListener("click", _soundButtonHandler);
     _pelengatorBtn.addEventListener("click", _pelengatorButtonHandler);
+
     
   </script>
 </head>
