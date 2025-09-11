@@ -154,6 +154,7 @@
       flex-direction: column;
       align-items: center;
       gap: 20px;
+      margin-top: 15vh; /* Опускаем компас вниз на 15% высоты экрана */
     }
 
     /* Волновые эффекты */
@@ -276,6 +277,19 @@
         height: 200px;
         opacity: 0;
       }
+    }
+
+    /* Стили для временных волн */
+    .wave.pulse-wave {
+      border-color: rgba(255, 255, 255, 0.8) !important;
+      border-width: 2px !important;
+      z-index: 10;
+    }
+
+    .wave.success-wave {
+      border-color: rgba(50, 205, 50, 0.8) !important;
+      border-width: 3px !important;
+      z-index: 10;
     }
 
     .compass-wrapper {
@@ -551,11 +565,13 @@
       const waveContainer = document.getElementById('waveContainer');
       if (!waveContainer) return;
       
-      // Создаем временную волну
+      // Создаем временную волну с уникальным классом
       const pulseWave = document.createElement('div');
-      pulseWave.className = 'wave';
+      pulseWave.className = 'wave pulse-wave';
       pulseWave.style.animation = 'waveExpand 1.5s ease-out forwards';
       pulseWave.style.animationDelay = '0s';
+      pulseWave.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+      pulseWave.style.borderWidth = '2px';
       
       // Добавляем в контейнер
       waveContainer.appendChild(pulseWave);
@@ -576,7 +592,7 @@
       // Создаем несколько волн одновременно для эффекта взрыва
       for (let i = 0; i < 6; i++) {
         const successWave = document.createElement('div');
-        successWave.className = 'wave';
+        successWave.className = 'wave success-wave';
         successWave.style.animation = 'waveExpand 2s ease-out forwards';
         successWave.style.animationDelay = `${i * 0.1}s`;
         successWave.style.borderColor = 'rgba(50, 205, 50, 0.8)';
@@ -596,7 +612,8 @@
 
     // === WAVE INTENSITY UPDATE ===
     function updateWaveIntensity(distance, radius) {
-      const waves = document.querySelectorAll('.wave');
+      // Берем только постоянные волны, не временные
+      const waves = document.querySelectorAll('.wave:not(.pulse-wave):not(.success-wave)');
       
       // Вычисляем интенсивность на основе расстояния
       let intensity = 1;
@@ -607,9 +624,8 @@
         intensity = 2; // Максимальная интенсивность в радиусе
       }
       
-      // Применяем интенсивность к волнам
+      // Применяем интенсивность к постоянным волнам
       waves.forEach((wave, index) => {
-        const delay = index * 1000; // 1 секунда между волнами
         wave.style.animationDuration = `${3 / intensity}s`;
         wave.style.opacity = Math.min(1, intensity * 0.6);
       });
@@ -686,13 +702,13 @@
         const d = haversine(latitude, longitude, tLat, tLon);
         
         // Плавная анимация изменения расстояния
-        if (lastDistance !== null && Math.abs(d - lastDistance) > 5) {
+        if (lastDistance !== null && Math.abs(d - lastDistance) > 10) {
           distEl.style.transform = 'scale(1.1)';
           setTimeout(() => {
             distEl.style.transform = 'scale(1)';
           }, 150);
           
-          // Создаем дополнительную волну при значительном изменении расстояния
+          // Создаем дополнительную волну только при значительном изменении расстояния
           createPulseWave();
         }
         
