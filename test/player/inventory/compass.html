@@ -524,6 +524,7 @@
         if (_audioEl) { _audioEl.pause(); _audioEl = null; }
         if (_osc) { _osc.stop(); _osc.disconnect(); _osc = null; }
         if (_gain) { _gain.disconnect(); _gain = null; }
+        if (_pelengatorTimer) { clearInterval(_pelengatorTimer); _pelengatorTimer = null; }
       } catch(e) { console.warn(e); }
       _isSoundOn = false;
       _isPelengatorOn = false; // Добавляем сброс состояния пеленгатора
@@ -553,22 +554,12 @@
     // Переменные для управления таймером пеленгатора
     let _pelengatorTimer = null;
     let _lastPelengatorTime = 0;
+    let _currentDistance = 0;
+    let _currentRadius = 15;
 
-    // Функция для обновления параметров звука пеленгатора на основе расстояния
-    function updatePelengatorSound(distance, radius) {
-      if (!_isPelengatorOn || !_osc || !_gain) return;
-      
-      // Вычисляем интервал между писками: от 3000мс на 1000м до 200мс на 25м
-      let interval;
-      if (distance <= 25) {
-        interval = 200; // 25м - очень часто (5 писков в секунду)
-      } else if (distance <= 1000) {
-        // Пропорциональное уменьшение от 200мс до 3000мс
-        const progress = (1000 - distance) / (1000 - 25); // от 0 до 1
-        interval = 200 + (3000 - 200) * (1 - progress);
-      } else {
-        interval = 3000; // Больше 1000м - медленно (1 писк в 3 секунды)
-      }
+    // Функция для создания одного писка пеленгатора
+    function createPelengatorBeep(distance, radius) {
+      if (!_osc || !_gain) return;
       
       // Вычисляем громкость: чем ближе к цели, тем громче
       let volume;
@@ -598,30 +589,63 @@
         frequency = 250; // Очень далеко - очень низкий тон
       }
       
-      // Проверяем, нужно ли пищать сейчас
-      const now = Date.now();
-      if (now - _lastPelengatorTime >= interval) {
-        _lastPelengatorTime = now;
+      // Создаем короткий писк
+      try {
+        const currentTime = _audioCtx.currentTime;
         
-        // Создаем короткий писк
-        try {
-          const currentTime = _audioCtx.currentTime;
-          
-          // Быстро включаем звук
-          _gain.gain.cancelScheduledValues(currentTime);
-          _gain.gain.setValueAtTime(0, currentTime);
-          _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.02);
-          
-          // Устанавливаем частоту
-          _osc.frequency.cancelScheduledValues(currentTime);
-          _osc.frequency.setValueAtTime(frequency, currentTime);
-          
-          // Быстро выключаем звук через 150мс
-          _gain.gain.linearRampToValueAtTime(0, currentTime + 0.15);
-        } catch (e) {
-          console.warn("Ошибка создания писка пеленгатора:", e);
-        }
+        // Быстро включаем звук
+        _gain.gain.cancelScheduledValues(currentTime);
+        _gain.gain.setValueAtTime(0, currentTime);
+        _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.02);
+        
+        // Устанавливаем частоту
+        _osc.frequency.cancelScheduledValues(currentTime);
+        _osc.frequency.setValueAtTime(frequency, currentTime);
+        
+        // Быстро выключаем звук через 150мс
+        _gain.gain.linearRampToValueAtTime(0, currentTime + 0.15);
+      } catch (e) {
+        console.warn("Ошибка создания писка пеленгатора:", e);
       }
+    }
+
+    // Функция для запуска таймера пеленгатора
+    function startPelengatorTimer() {
+      if (_pelengatorTimer) {
+        clearInterval(_pelengatorTimer);
+      }
+      
+      // Вычисляем интервал между писками: от 3000мс на 1000м до 200мс на 25м
+      let interval;
+      if (_currentDistance <= 25) {
+        interval = 200; // 25м - очень часто (5 писков в секунду)
+      } else if (_currentDistance <= 1000) {
+        // Пропорциональное уменьшение от 200мс до 3000мс
+        const progress = (1000 - _currentDistance) / (1000 - 25); // от 0 до 1
+        interval = 200 + (3000 - 200) * (1 - progress);
+      } else {
+        interval = 3000; // Больше 1000м - медленно (1 писк в 3 секунды)
+      }
+      
+      console.log(`Пеленгатор: расстояние ${_currentDistance}м, интервал ${interval}мс`);
+      
+      _pelengatorTimer = setInterval(() => {
+        if (_isPelengatorOn) {
+          createPelengatorBeep(_currentDistance, _currentRadius);
+        }
+      }, interval);
+    }
+
+    // Функция для обновления параметров звука пеленгатора на основе расстояния
+    function updatePelengatorSound(distance, radius) {
+      if (!_isPelengatorOn || !_osc || !_gain) return;
+      
+      // Сохраняем текущие значения
+      _currentDistance = distance;
+      _currentRadius = radius;
+      
+      // Перезапускаем таймер с новым интервалом
+      startPelengatorTimer();
     }
 
     function _soundButtonHandler() {
