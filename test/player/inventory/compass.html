@@ -1,139 +1,23 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Компас</title>
-  <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      background: #111;
-      color: #fff;
-      font-family: sans-serif;
-    }
-    #compass {
-      width: 200px;
-      height: 200px;
-      background: url('compass.png') no-repeat center/contain;
-      transform: rotate(0deg);
-      transition: transform 0.3s linear;
-    }
-    .controls {
-      margin-top: 20px;
-      display: flex;
-      gap: 10px;
-    }
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-      background: #333;
-      color: #fff;
-    }
-    button:hover {
-      background: #444;
-    }
-  </style>
-</head>
-<body>
-  <div id="compass"></div>
+<button id="test">ТЕСТ ЗВУКА</button>
+<script>
+let ctx, osc;
 
-  <div class="controls">
-    <button id="sound-button">🔈 Вкл. звук</button>
-    <button id="pelengator-button">📡 Пеленгатор</button>
-  </div>
+document.getElementById("test").addEventListener("click", () => {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+  }
 
-  <script>
-    // === глобальные переменные для звука ===
-    let audioCtx = null;
-    let oscillator = null;
-    let isSoundOn = false;
-    let isPelengatorOn = false;
-
-    const compass = document.getElementById("compass");
-    const soundBtn = document.getElementById("sound-button");
-    const pelengatorBtn = document.getElementById("pelengator-button");
-
-    // === КНОПКА ЗВУКА ===
-    soundBtn.addEventListener("click", async () => {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-
-      if (audioCtx.state === "suspended") {
-        await audioCtx.resume();
-      }
-
-      if (!isSoundOn) {
-        oscillator = audioCtx.createOscillator();
-        oscillator.type = "sine";
-        oscillator.frequency.value = 440; // базовый тон
-        oscillator.connect(audioCtx.destination);
-        oscillator.start();
-
-        isSoundOn = true;
-        soundBtn.textContent = "🔊 Выкл. звук";
-        console.log("Звук включен");
-      } else {
-        if (oscillator) {
-          oscillator.stop();
-          oscillator.disconnect();
-          oscillator = null;
-        }
-        isSoundOn = false;
-        soundBtn.textContent = "🔈 Вкл. звук";
-        console.log("Звук выключен");
-      }
-    });
-
-    // === КНОПКА ПЕЛЕНГАТОРА ===
-    pelengatorBtn.addEventListener("click", async () => {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === "suspended") {
-        await audioCtx.resume();
-      }
-
-      isPelengatorOn = !isPelengatorOn;
-      pelengatorBtn.textContent = isPelengatorOn ? "❌ Стоп пеленгатор" : "📡 Пеленгатор";
-      console.log("Пеленгатор:", isPelengatorOn);
-    });
-
-    // === ОБНОВЛЕНИЕ КОМПАСА ===
-    function updateCompass(angle) {
-      compass.style.transform = `rotate(${angle}deg)`;
-
-      if (isSoundOn && oscillator) {
-        // постоянный гул меняется по углу
-        const freq = 200 + (angle % 180) * 5;
-        oscillator.frequency.value = freq;
-      }
-
-      if (isPelengatorOn && oscillator) {
-        // пеленгатор: чем ближе к северу, тем выше тон
-        const diff = Math.abs((angle % 360) - 0);
-        oscillator.frequency.value = 800 - diff * 2;
-      }
-    }
-
-    // === ИМИТАЦИЯ КОМПАСА (только для теста) ===
-    let testAngle = 0;
-    setInterval(() => {
-      testAngle = (testAngle + 10) % 360;
-      updateCompass(testAngle);
-    }, 1000);
-
-    // 🧭 Тут остаётся твоя логика геолокации и настоящего компаса
-    // navigator.geolocation.watchPosition(...) и event.orientation(...)
-    // В updateCompass(angle) звук будет обновляться автоматически
-  </script>
-</body>
-</html>
+  if (!osc) {
+    osc = ctx.createOscillator();
+    osc.frequency.value = 440;
+    osc.connect(ctx.destination);
+    osc.start();
+    console.log("Звук включен ✅");
+  } else {
+    osc.stop();
+    osc.disconnect();
+    osc = null;
+    console.log("Звук выключен ❌");
+  }
+});
+</script>
