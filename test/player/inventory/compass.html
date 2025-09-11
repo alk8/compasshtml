@@ -1,1176 +1,129 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="theme-color" content="#39d98a"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="format-detection" content="telephone=no"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <!-- Telegram WebApp specific meta tags -->
-  <meta name="telegram:web_app" content="true"/>
-  <meta name="telegram:web_app:version" content="6.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:;">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Компас с пеленгатором</title>
+
   <!-- Telegram WebApp API -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <title>Компас</title>
+
   <style>
-    body {
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      overflow: hidden;
-      box-sizing: border-box;
-      position: relative;
-    }
-
-    /* Размытый двигающийся туман */
-    .fog-background {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      opacity: 0.6;
-      transition: all 2s ease-in-out;
-    }
-
-    /* Интенсивность тумана в зависимости от расстояния */
-    .fog-background.very-far {
-      opacity: 0.8;
-    }
-
-    .fog-background.far {
-      opacity: 0.7;
-    }
-
-    .fog-background.medium {
-      opacity: 0.5;
-    }
-
-    .fog-background.close {
-      opacity: 0.3;
-    }
-
-    .fog-layer {
-      position: absolute;
-      width: 150%;
-      height: 150%;
-      background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
-                  radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
-      animation: fogMove 20s ease-in-out infinite;
-      filter: blur(40px);
-    }
-
-    .fog-layer:nth-child(2) {
-      animation-delay: -7s;
-      animation-duration: 25s;
-      background: radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
-                  radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),
-                  radial-gradient(circle at 90% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-    }
-
-    .fog-layer:nth-child(3) {
-      animation-delay: -14s;
-      animation-duration: 30s;
-      background: radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-                  radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.07) 0%, transparent 50%),
-                  radial-gradient(circle at 10% 90%, rgba(255, 255, 255, 0.09) 0%, transparent 50%);
-    }
-
-    .fog-layer:nth-child(4) {
-      animation-delay: -21s;
-      animation-duration: 35s;
-      background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.03) 0%, transparent 60%),
-                  radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.04) 0%, transparent 60%),
-                  radial-gradient(circle at 10% 40%, rgba(255, 255, 255, 0.06) 0%, transparent 60%);
-      filter: blur(60px);
-    }
-
-    @keyframes fogMove {
-      0% {
-        transform: translateX(-15%) translateY(-8%) scale(0.95) rotate(0deg);
-      }
-      25% {
-        transform: translateX(8%) translateY(-12%) scale(1.1) rotate(90deg);
-      }
-      50% {
-        transform: translateX(15%) translateY(8%) scale(0.85) rotate(180deg);
-      }
-      75% {
-        transform: translateX(-8%) translateY(12%) scale(1.05) rotate(270deg);
-      }
-      100% {
-        transform: translateX(-15%) translateY(-8%) scale(0.95) rotate(360deg);
-      }
-    }
-
-    /* Цветовые состояния тумана */
-    .fog-background.very-far {
-      /* Серый асфальт - больше 3 км */
-      background: linear-gradient(135deg, 
-        rgba(70, 70, 70, 0.9) 0%, 
-        rgba(50, 50, 50, 0.7) 50%, 
-        rgba(90, 90, 90, 0.8) 100%);
-    }
-
-    .fog-background.far {
-      /* Красный - от 2 до 3 км */
-      background: linear-gradient(135deg, 
-        rgba(220, 20, 60, 0.9) 0%, 
-        rgba(178, 34, 34, 0.7) 50%, 
-        rgba(255, 69, 0, 0.8) 100%);
-    }
-
-    .fog-background.medium {
-      /* Оранжевый/Желтый - от 500м до 2 км */
-      background: linear-gradient(135deg, 
-        rgba(255, 140, 0, 0.9) 0%, 
-        rgba(255, 165, 0, 0.7) 50%, 
-        rgba(255, 215, 0, 0.8) 100%);
-    }
-
-    .fog-background.close {
-      /* Зеленый - от 15м до 500м */
-      background: linear-gradient(135deg, 
-        rgba(34, 139, 34, 0.9) 0%, 
-        rgba(50, 205, 50, 0.7) 50%, 
-        rgba(144, 238, 144, 0.8) 100%);
-    }
-
-    .compass-container {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      margin-top: 8vh; /* Поднимаем компас на 7% (было 15vh, стало 8vh) */
-    }
-
-    /* Волновые эффекты */
-    .wave-container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 250px;
-      height: 250px;
-      pointer-events: none;
-    }
-
-    .wave {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border: 2px solid rgba(0, 212, 255, 0.6);
-      border-radius: 50%;
-      opacity: 0;
-      animation: waveExpand 3s ease-out infinite;
-    }
-
-    .wave:nth-child(1) {
-      animation-delay: 0s;
-      border-color: rgba(0, 212, 255, 0.8);
-    }
-
-    .wave:nth-child(2) {
-      animation-delay: 1s;
-      border-color: rgba(0, 212, 255, 0.6);
-    }
-
-    .wave:nth-child(3) {
-      animation-delay: 2s;
-      border-color: rgba(0, 212, 255, 0.4);
-    }
-
-    .wave:nth-child(4) {
-      animation-delay: 3s;
-      border-color: rgba(0, 212, 255, 0.2);
-    }
-
-    /* Цветовые волны в зависимости от расстояния */
-    .wave-container.very-far .wave {
-      border-color: rgba(128, 128, 128, 0.6);
-    }
-
-    .wave-container.far .wave {
-      border-color: rgba(220, 20, 60, 0.6);
-    }
-
-    .wave-container.medium .wave {
-      border-color: rgba(255, 165, 0, 0.6);
-    }
-
-    .wave-container.close .wave {
-      border-color: rgba(50, 205, 50, 0.6);
-    }
-
-    @keyframes waveExpand {
-      0% {
-        width: 0;
-        height: 0;
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.8;
-      }
-      100% {
-        width: 250px;
-        height: 250px;
-        opacity: 0;
-      }
-    }
-
-    /* Дополнительные волны для эффекта ripple */
-    .ripple-container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 180px;
-      height: 180px;
-      pointer-events: none;
-    }
-
-    .ripple {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      opacity: 0;
-      animation: rippleExpand 2s ease-out infinite;
-    }
-
-    .ripple:nth-child(1) {
-      animation-delay: 0.5s;
-    }
-
-    .ripple:nth-child(2) {
-      animation-delay: 1.5s;
-    }
-
-    .ripple:nth-child(3) {
-      animation-delay: 2.5s;
-    }
-
-    @keyframes rippleExpand {
-      0% {
-        width: 20px;
-        height: 20px;
-        opacity: 0.8;
-      }
-      100% {
-        width: 180px;
-        height: 180px;
-        opacity: 0;
-      }
-    }
-
-    /* Стили для временных волн */
-    .wave.pulse-wave {
-      border-color: rgba(255, 255, 255, 0.4) !important;
-      border-width: 1px !important;
-      z-index: 10;
-      animation: waveExpand 1.5s ease-out forwards !important;
-    }
-
-    .wave.success-wave {
-      border-color: rgba(50, 205, 50, 0.8) !important;
-      border-width: 3px !important;
-      z-index: 10;
-    }
-
-    .compass-wrapper {
-      width: 240px;
-      height: 240px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .compass-ring {
-      position: absolute;
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.2);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-main {
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1), transparent 50%),
-                  radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 70%),
-                  linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      backdrop-filter: blur(10px);
-      box-shadow: 
-        0 0 30px rgba(0, 150, 255, 0.3),
-        inset 0 0 30px rgba(255, 255, 255, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    .compass-main:hover {
-      transform: scale(1.02);
-      box-shadow: 
-        0 0 40px rgba(0, 150, 255, 0.4),
-        inset 0 0 40px rgba(255, 255, 255, 0.15);
-    }
-
-    .distance-display {
-      font-size: 36px;
-      font-weight: 300;
-      text-align: center;
-      background: linear-gradient(45deg, #00d4ff, #ffffff, #00d4ff);
-      background-size: 200% 200%;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: gradientShift 3s ease-in-out infinite;
-      letter-spacing: -1px;
-      transition: all 0.3s ease;
-    }
-
-    /* Элегантная цветовая индикация расстояния */
-    .distance-display.very-far {
-      color: #ff4757;
-      text-shadow: 0 0 15px rgba(255, 71, 87, 0.6);
-    }
-
-    .distance-display.far {
-      color: #ffa502;
-      text-shadow: 0 0 15px rgba(255, 165, 2, 0.6);
-    }
-
-    .distance-display.medium {
-      color: #ffd700;
-      text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-    }
-
-    .distance-display.close {
-      color: #51cf66;
-      text-shadow: 0 0 15px rgba(81, 207, 102, 0.6);
-    }
-
-    /* Пульсирующие кольца с цветовой индикацией */
-    .compass-ring.very-far {
-      border-color: rgba(255, 71, 87, 0.4);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-ring.far {
-      border-color: rgba(255, 165, 2, 0.4);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-ring.medium {
-      border-color: rgba(255, 215, 0, 0.4);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-ring.close {
-      border-color: rgba(81, 207, 102, 0.4);
-      animation: pulseRing 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pulseRing {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 0.3;
-      }
-      50% {
-        transform: scale(1.1);
-        opacity: 0.7;
-      }
-    }
-
-    .info-panel {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 16px 24px;
-      text-align: center;
-      font-size: 14px;
-      font-weight: 400;
-      color: rgba(255, 255, 255, 0.8);
-      min-width: 200px;
-      transition: all 0.3s ease;
-    }
-
-    .info-panel:hover {
-      background: rgba(255, 255, 255, 0.08);
-      transform: translateY(-2px);
-    }
-
-    /* Кнопка активации пеленгатора */
-    .pelengator-button {
-      background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(0, 150, 255, 0.3) 100%);
-      border: 2px solid rgba(0, 212, 255, 0.5);
-      border-radius: 25px;
-      padding: 12px 24px;
-      color: #ffffff;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
-      text-align: center;
-      min-width: 200px;
-    }
-
-    .pelengator-button:hover {
-      background: linear-gradient(135deg, rgba(0, 212, 255, 0.3) 0%, rgba(0, 150, 255, 0.4) 100%);
-      border-color: rgba(0, 212, 255, 0.7);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
-    }
-
-    .pelengator-button:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 10px rgba(0, 212, 255, 0.3);
-    }
-
-    .pelengator-button.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: linear-gradient(135deg, rgba(128, 128, 128, 0.2) 0%, rgba(100, 100, 100, 0.3) 100%);
-      border-color: rgba(128, 128, 128, 0.3);
-    }
-
-    .pelengator-button.disabled:hover {
-      transform: none;
-      box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
-    }
-
-
-    .status-indicator {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #00d4ff;
-      margin-right: 8px;
-      animation: blink 2s ease-in-out infinite;
-    }
-
-    .status-indicator.error {
-      background: #ff6b6b;
-    }
-
-    .status-indicator.success {
-      background: #51cf66;
-      animation: none;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 0.3;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.6;
-        transform: scale(1.05);
-      }
-    }
-
-    @keyframes gradientShift {
-      0%, 100% {
-        background-position: 0% 50%;
-      }
-      50% {
-        background-position: 100% 50%;
-      }
-    }
-
-    @keyframes blink {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.3;
-      }
-    }
-
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-top: 3px solid #00d4ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    body { font-family: sans-serif; text-align: center; margin: 20px; background: #f4f4f4; }
+    #compass {
+      width: 220px; height: 220px; border: 2px solid #000;
+      border-radius: 50%; margin: 20px auto; position: relative;
+      background: white;
+    }
+    #needle {
+      width: 2px; height: 100px; background: red;
+      position: absolute; top: 10px; left: 50%;
+      transform-origin: bottom center;
+    }
+    button {
+      margin: 10px; padding: 12px 20px;
+      font-size: 16px; border-radius: 12px;
+      border: none; cursor: pointer; transition: 0.2s;
+    }
+    .active { background: #0a0; color: #fff; }
   </style>
+</head>
+<body>
+
+  <h2>🧭 Компас с пеленгатором</h2>
+  <div id="compass">
+    <div id="needle"></div>
+  </div>
+
+  <button id="soundBtn">🔊 Включить звук</button>
+  <button id="pelengatorBtn">🔊 Активировать пеленгатор</button>
+
   <script>
-    // === РАННЯЯ ИНИЦИАЛИЗАЦИЯ WEBAPP ===
-    (function() {
-      if (window.Telegram && window.Telegram.WebApp) {
-        window.Telegram.WebApp.ready();
-      }
-    })();
+    // Telegram WebApp init
+    const tg = window.Telegram.WebApp;
+    tg.expand();
 
-    // === УТИЛИТЫ ===
-    function b64urlToStr(b64){
-      b64 = b64.replace(/-/g,'+').replace(/_/g,'/');
-      const pad = b64.length % 4;
-      if (pad) b64 += '='.repeat(4-pad);
-      return atob(b64);
-    }
-
-    function tryDecodePayload(){
-      const sp = new URLSearchParams(location.search);
-      let p = sp.get('p');
-      if (!p && location.hash.startsWith('#')) {
-        p = new URLSearchParams(location.hash.substring(1)).get('p');
-      }
-      if (!p) {
-        return null;
-      }
-
-      try {
-        const json = b64urlToStr(p);
-        const result = JSON.parse(json);
-        return result;
-      } catch(e) {
-        return null;
-      }
-    }
-
-    function toRad(d){ return d*Math.PI/180 }
-    function haversine(lat1, lon1, lat2, lon2){
-      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-      return Math.round(R*c);
-    }
-
-    // === УВЕДОМЛЕНИЕ БОТА ===
-    function notifyBot(uid){
-      if (window.Telegram?.WebApp) {
-        try {
-          window.Telegram.WebApp.ready();
-
-          const data = JSON.stringify({
-                action: 'compass_success',
-                uid: uid,
-            ts: Date.now()
-          });
-
-          if (typeof window.Telegram.WebApp.sendData === 'function') {
-              window.Telegram.WebApp.sendData(data);
-
-              // Ждем немного перед закрытием
-              setTimeout(() => {
-                  window.Telegram.WebApp.close();
-              }, 500);
-          } else {
-          setTimeout(() => window.close(), 1000);
-          }
-        } catch(e){
-              setTimeout(() => window.close(), 1000);
-            }
-          } else {
-        setTimeout(()=>window.close(), 1000);
-      }
-    }
-
-
-    // === PULSE WAVE EFFECT ===
-    function createPulseWave() {
-      const waveContainer = document.getElementById('waveContainer');
-      if (!waveContainer) return;
-      
-      // Создаем временную волну с уникальным классом
-      const pulseWave = document.createElement('div');
-      pulseWave.className = 'wave pulse-wave';
-      pulseWave.style.animation = 'waveExpand 1.5s ease-out forwards';
-      pulseWave.style.animationDelay = '0s';
-      pulseWave.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-      pulseWave.style.borderWidth = '1px';
-      
-      // Добавляем в контейнер
-      waveContainer.appendChild(pulseWave);
-      
-      // Удаляем после анимации
-      setTimeout(() => {
-        if (pulseWave.parentNode) {
-          waveContainer.removeChild(pulseWave);
-        }
-      }, 1500);
-    }
-
-    // === SUCCESS WAVES EFFECT ===
-    function createSuccessWaves() {
-      const waveContainer = document.getElementById('waveContainer');
-      if (!waveContainer) return;
-      
-      // Создаем несколько волн одновременно для эффекта взрыва
-      for (let i = 0; i < 6; i++) {
-        const successWave = document.createElement('div');
-        successWave.className = 'wave success-wave';
-        successWave.style.animation = 'waveExpand 2s ease-out forwards';
-        successWave.style.animationDelay = `${i * 0.1}s`;
-        successWave.style.borderColor = 'rgba(50, 205, 50, 0.8)';
-        successWave.style.borderWidth = '3px';
-        
-        // Добавляем в контейнер
-        waveContainer.appendChild(successWave);
-        
-        // Удаляем после анимации
-        setTimeout(() => {
-          if (successWave.parentNode) {
-            waveContainer.removeChild(successWave);
-          }
-        }, 2000 + (i * 100));
-      }
-    }
-
-    // === WAVE INTENSITY UPDATE ===
-    function updateWaveIntensity(distance, radius) {
-      // Берем только постоянные волны, не временные
-      const waves = document.querySelectorAll('.wave:not(.pulse-wave):not(.success-wave)');
-      
-      // Вычисляем интенсивность на основе расстояния
-      let intensity = 1;
-      if (distance <= radius * 2) {
-        intensity = 1.5; // Увеличиваем интенсивность при приближении
-      }
-      if (distance <= radius) {
-        intensity = 2; // Максимальная интенсивность в радиусе
-      }
-      
-      // Применяем интенсивность к постоянным волнам
-      waves.forEach((wave, index) => {
-        wave.style.animationDuration = `${3 / intensity}s`;
-        wave.style.opacity = Math.min(1, intensity * 0.6);
-      });
-    }
-
-    // === DISTANCE COLOR LOGIC ===
-    function updateDistanceColor(distance, radius) {
-      const distEl = document.getElementById('distance');
-      const containerEl = document.querySelector('.compass-container');
-      const ringsEl = document.querySelectorAll('.compass-ring');
-      const fogEl = document.getElementById('fogBackground');
-      const waveEl = document.getElementById('waveContainer');
-      
-      if (!distEl || !containerEl || !fogEl || !waveEl) return;
-      
-      // Убираем все классы цветов
-      distEl.classList.remove('very-far', 'far', 'medium', 'close');
-      containerEl.classList.remove('very-far', 'far', 'medium', 'close');
-      fogEl.classList.remove('very-far', 'far', 'medium', 'close');
-      waveEl.classList.remove('very-far', 'far', 'medium', 'close');
-      ringsEl.forEach(ring => {
-        ring.classList.remove('very-far', 'far', 'medium', 'close');
-      });
-      
-      let colorClass = '';
-      if (distance > 3000) {
-        // Больше 3 км - серый асфальт
-        colorClass = 'very-far';
-      } else if (distance > 2000) {
-        // От 2 до 3 км - красный
-        colorClass = 'far';
-      } else if (distance > 500) {
-        // От 500м до 2 км - оранжевый/желтый
-        colorClass = 'medium';
-        } else {
-        // От 15м до 500м - зеленый
-        colorClass = 'close';
-      }
-      
-      // Применяем цветовую индикацию ко всем элементам включая туман и волны
-      distEl.classList.add(colorClass);
-      containerEl.classList.add(colorClass);
-      fogEl.classList.add(colorClass);
-      waveEl.classList.add(colorClass);
-      ringsEl.forEach(ring => {
-        ring.classList.add(colorClass);
-      });
-    }
-
-    // === SOUND FUNCTIONS ===
-    let Audio = null; // Глобальный объект Audio
-    let soundEnabled = false;
-
-    // Функция toggleSound удалена - заменена на _soundButtonHandlerDirect
-
-    function startSound() {
-      try {
-        // Создаем Audio только если его еще нет
-        if (!Audio) {
-          Audio = new Audio('https://example.com/beep.mp3');
-          Audio.loop = true;
-        }
-        
-        // Запускаем воспроизведение с обработкой ошибок
-        Audio.play().catch(error => {
-          console.error('Ошибка воспроизведения звука:', error);
-        });
-        
-        // Обновляем состояние
-        soundEnabled = true;
-        document.getElementById('soundBtn').textContent = '🔇 Отключить звук';
-        document.getElementById('soundBtn').classList.add('disabled');
-        
-        console.log('Звук включен');
-        
-      } catch (error) {
-        console.error('Ошибка инициализации звука:', error);
-      }
-    }
-
-    function stopSound() {
-      if (Audio) {
-        Audio.pause();
-        Audio.currentTime = 0; // Сбрасываем на начало
-      }
-      
-      soundEnabled = false;
-      document.getElementById('soundBtn').textContent = '🔊 Включить звук';
-      document.getElementById('soundBtn').classList.remove('disabled');
-      
-      console.log('Звук отключен');
-    }
-
-    // === PELENGATOR FUNCTIONS ===
-    let audioContext = null;
-    let pelengatorActive = false;
-    let currentFrequency = 440; // Начальная частота
-    let currentVolume = 0.1;
-
-    function activatePelengator() {
-      if (pelengatorActive) {
-        deactivatePelengator();
-        return;
-      }
-
-      try {
-        // Сразу создаем AudioContext в обработчике клика для Telegram WebApp
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Активируем пеленгатор
-        pelengatorActive = true;
-        document.getElementById('pelengatorBtn').textContent = '🔇 Отключить пеленгатор';
-        document.getElementById('pelengatorBtn').classList.add('disabled');
-        
-        console.log('Пеленгатор активирован');
-        
-        // Сразу запускаем первый звук в обработчике клика
-        if (audioContext.state === 'suspended') {
-          audioContext.resume().then(() => {
-            startPelengatorSound();
-          });
-      } else {
-          startPelengatorSound();
-        }
-        
-      } catch (error) {
-        console.error('Ошибка активации пеленгатора:', error);
-        alert('Не удалось активировать пеленгатор. Проверьте поддержку аудио в браузере.');
-      }
-    }
-
-    function deactivatePelengator() {
-      if (audioContext) {
-        audioContext.close();
-        audioContext = null;
-      }
-      
-      pelengatorActive = false;
-      document.getElementById('pelengatorBtn').textContent = '🔊 Активировать пеленгатор';
-      document.getElementById('pelengatorBtn').classList.remove('disabled');
-      
-      console.log('Пеленгатор деактивирован');
-    }
-
-    function startPelengatorSound() {
-      if (!audioContext || !pelengatorActive) return;
-
-      // Проверяем состояние AudioContext и возобновляем если нужно
-      if (audioContext.state === 'suspended') {
-        audioContext.resume().then(() => {
-          startPelengatorSound();
-        });
-        return;
-      }
-
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(currentFrequency, audioContext.currentTime);
-      gainNode.gain.setValueAt(currentVolume, audioContext.currentTime);
-
-      oscillator.start();
-
-      // Останавливаем звук через 0.5 секунды
-      setTimeout(() => {
-        oscillator.stop();
-        
-        // Если пеленгатор еще активен, запускаем следующий звук
-        if (pelengatorActive) {
-          setTimeout(() => startPelengatorSound(), 1000); // Пауза 1 секунда
-        }
-      }, 500);
-    }
-
-    function updatePelengatorFrequency(distance, radius) {
-      if (!pelengatorActive) return;
-
-      // Изменяем частоту в зависимости от расстояния
-      // Ближе к цели - выше частота
-      let frequency;
-      if (distance <= radius) {
-        frequency = 800; // В радиусе - высокий тон
-      } else if (distance <= radius * 2) {
-        frequency = 600; // Близко - средний тон
-      } else if (distance <= radius * 5) {
-        frequency = 400; // Далеко - низкий тон
-      } else {
-        frequency = 200; // Очень далеко - очень низкий тон
-      }
-
-      currentFrequency = frequency;
-    }
-
-    // === MAIN ===
-    window.addEventListener('DOMContentLoaded', ()=>{
-      
-      const payload = tryDecodePayload();
-
-      const tLat = parseFloat(payload?.lat ?? new URLSearchParams(location.search).get('lat'));
-      const tLon = parseFloat(payload?.lon ?? new URLSearchParams(location.search).get('lon'));
-      const radius = parseInt(payload?.r ?? new URLSearchParams(location.search).get('r') ?? 15, 10);
-      const uid = payload?.uid ?? new URLSearchParams(location.search).get('uid');
-
-      const distEl = document.getElementById('distance');
-      const infoEl = document.getElementById('info');
-      const statusEl = document.getElementById('status');
-
-      if (Number.isNaN(tLat) || Number.isNaN(tLon)){
-        infoEl.innerHTML = '<span class="status-indicator error"></span>Некорректные координаты';
-        return;
-      }
-
-      let fired = false;
-      let lastDistance = null;
-      
-      const onpos = (pos) => {
-        const {latitude, longitude} = pos.coords;
-        const d = haversine(latitude, longitude, tLat, tLon);
-        
-        // Плавная анимация изменения расстояния
-        if (lastDistance !== null && Math.abs(d - lastDistance) > 10) {
-          distEl.style.transform = 'scale(1.1)';
-          setTimeout(() => {
-            distEl.style.transform = 'scale(1)';
-          }, 150);
-          
-          // Создаем дополнительную волну только при значительном изменении расстояния
-          createPulseWave();
-        }
-        
-        distEl.textContent = d + " м";
-        updateDistanceColor(d, radius);
-        
-        // Увеличиваем интенсивность волн при приближении к цели
-        updateWaveIntensity(d, radius);
-        
-        // Обновляем частоту пеленгатора
-        updatePelengatorFrequency(d, radius);
-        
-        // Интеграция с новой звуковой системой
-        if (typeof _updateSoundFrequency === 'function') {
-          let frequency;
-          if (d <= radius) {
-            frequency = 800; // В радиусе - высокий тон
-          } else if (d <= radius * 2) {
-            frequency = 600; // Близко - средний тон
-          } else if (d <= radius * 5) {
-            frequency = 400; // Далеко - низкий тон
-          } else {
-            frequency = 200; // Очень далеко - очень низкий тон
-          }
-          _updateSoundFrequency(frequency);
-        }
-        
-        infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
-        
-        if (!fired && d <= radius) {
-          fired = true;
-          statusEl.innerHTML = '<span class="status-indicator success"></span>Цель достигнута!';
-          distEl.classList.add('close');
-          
-          // Создаем взрыв волн при достижении цели
-          createSuccessWaves();
-          
-          // Останавливаем пеленгатор при достижении цели
-          if (pelengatorActive) {
-            deactivatePelengator();
-          }
-          
-          // Останавливаем звук при достижении цели (новая система)
-          if (typeof _stopAllAudio === 'function') {
-            _stopAllAudio();
-          }
-          
-          notifyBot(uid);
-        }
-        
-        lastDistance = d;
-      };
-      
-      const onerr = (err) => { 
-        infoEl.innerHTML = `<span class="status-indicator error"></span>Ошибка геолокации: ${err.message}`;
-      };
-
-      if (!('geolocation' in navigator)) {
-        infoEl.innerHTML = '<span class="status-indicator error"></span>Геолокация не поддерживается';
-        return;
-      }
-
-      // Показываем загрузку
-      infoEl.innerHTML = '<span class="status-indicator"></span>Поиск местоположения...';
-
-      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy: true});
-      setInterval(() => navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy: true}), 5000);
-    });
-
-    // ----------------- НОВАЯ НАДЁЖНАЯ РЕАЛИЗАЦИЯ ЗВУКА -----------------
-    
-    // Глобальные переменные для звука
-    let _audioEl = null;        // HTMLAudioElement - primary (good for iOS)
-    let _audioCtx = null;       // AudioContext (fallback / Android)
-    let _osc = null;            // OscillatorNode fallback
-    let _gain = null;           // GainNode for oscillator volume
-    let _isSoundOn = false;
-    let _isPelengatorOn = false;
-
-    // Кнопки — в проекте есть: pelengatorBtn
+    // ---------------- Звук ----------------
+    let _audioEl = null, _audioCtx = null, _osc = null, _gain = null;
+    let _isSoundOn = false, _isPelengatorOn = false;
+    const _soundBtn = document.getElementById('soundBtn');
     const _pelengatorBtn = document.getElementById('pelengatorBtn');
 
-    // UI helpers (только изменение текста/классов, НЕ логика компаса)
+    function _updateSoundButtonUI() {
+      _soundBtn.textContent = _isSoundOn ? '🔇 Отключить звук' : '🔊 Включить звук';
+      _soundBtn.classList.toggle('active', _isSoundOn);
+    }
     function _updatePelengatorButtonUI() {
-      if (!_pelengatorBtn) return;
       _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
-      _pelengatorBtn.classList.toggle('disabled', _isPelengatorOn);
+      _pelengatorBtn.classList.toggle('active', _isPelengatorOn);
     }
 
-    // Остановка всего звука (очищаем элементы / oscillator)
     function _stopAllAudio() {
       try {
-        if (_audioEl) {
-          try { _audioEl.pause(); } catch(_) {}
-          _audioEl = null;
-        }
-        if (_osc) {
-          try { _osc.stop(0); _osc.disconnect(); } catch(_) {}
-          _osc = null;
-        }
-        if (_gain) {
-          try { _gain.disconnect(); } catch(_) {}
-          _gain = null;
-        }
-      } catch (e) {
-        console.warn('stopAllAudio error', e);
-      }
+        if (_audioEl) { _audioEl.pause(); _audioEl = null; }
+        if (_osc) { _osc.stop(); _osc.disconnect(); _osc = null; }
+        if (_gain) { _gain.disconnect(); _gain = null; }
+      } catch(e) { console.warn(e); }
       _isSoundOn = false;
-      console.log('Sound: stopped all audio');
+      _updateSoundButtonUI();
     }
 
-    // Быстрый немедленный старт осциллятора (не использует await)
-    function _startOscillatorImmediate(initialFreq = 440, vol = 0.06) {
-      try {
-        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        // Попытка "разбудить" / resume (без await, это важно — вызов в обработчике)
-        if (typeof _audioCtx.resume === 'function') try { _audioCtx.resume(); } catch(e) {}
+    function _startOscillatorImmediate() {
+      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === "suspended") _audioCtx.resume();
 
-        _gain = _audioCtx.createGain();
-        _gain.gain.value = vol;
+      _gain = _audioCtx.createGain();
+      _gain.gain.value = 0.05;
 
-        _osc = _audioCtx.createOscillator();
-        _osc.type = 'sine';
-        _osc.frequency.value = initialFreq;
+      _osc = _audioCtx.createOscillator();
+      _osc.type = "sine";
+      _osc.frequency.value = 440;
 
-        _osc.connect(_gain);
-        _gain.connect(_audioCtx.destination);
+      _osc.connect(_gain);
+      _gain.connect(_audioCtx.destination);
+      _osc.start();
 
-        // стартуем прямо здесь
-        _osc.start(0);
-
-        _isSoundOn = true;
-        console.log('Sound: started oscillator fallback');
-        return true;
-      } catch (e) {
-        console.error('Sound: oscillator fallback failed', e);
-        return false;
-      }
+      _isSoundOn = true;
+      _updateSoundButtonUI();
     }
 
-    // Главный обработчик для кнопки звука — вызывается напрямую в обработчике клика
-    function _soundButtonHandlerDirect() {
-      // если звук уже включен — останавливаем
-      if (_isSoundOn) {
-        _stopAllAudio();
-        return;
-      }
+    function _soundButtonHandler() {
+      if (_isSoundOn) { _stopAllAudio(); return; }
 
-      // Попытка 1: HTMLAudio (обычно лучше на iOS)
       try {
-        // Рекомендуется заменить SOUND_URL на свой надежный HTTPS файл (mp3/ogg/wav)
-        const SOUND_URL = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
+        const SOUND_URL = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
         _audioEl = new Audio(SOUND_URL);
         _audioEl.loop = true;
         _audioEl.playsInline = true;
-
-        // ВАЖНО: play() вызывается прямо здесь (в обработчике), без await до него
-        const playPromise = _audioEl.play();
-
-        if (playPromise && typeof playPromise.then === 'function') {
-          playPromise.then(() => {
-            _isSoundOn = true;
-            console.log('Sound: audio element playing');
-          }).catch((err) => {
-            console.warn('Sound: audio element play rejected, falling back to oscillator', err);
-            // Очистим audio element и попробуем осциллятор
-            try { _audioEl = null; } catch(_) { _audioEl = null; }
-            _startOscillatorImmediate();
-          });
-        } else {
-          // Браузер не вернул promise — считаем, что play был инициирован
+        _audioEl.play().then(() => {
           _isSoundOn = true;
-          console.log('Sound: audio element play (no promise)');
-        }
+          _updateSoundButtonUI();
+        }).catch(err => {
+          console.warn("Fallback to oscillator:", err);
+          _startOscillatorImmediate();
+        });
       } catch (e) {
-        console.warn('Sound: creating audio element failed, trying oscillator', e);
         _startOscillatorImmediate();
       }
     }
 
-    // Обработчик пеленгатора — переключает режим и воспроизводит звук
-    function _pelengatorButtonHandlerDirect() {
+    function _pelengatorButtonHandler() {
       _isPelengatorOn = !_isPelengatorOn;
       _updatePelengatorButtonUI();
-
-      if (_isPelengatorOn) {
-        // Воспроизводим звук при активации пеленгатора
-        const audio = new Audio("beep.ogg");   // или mp3
-        audio.play().catch(() => {
-          // если не получилось — fallback на WebAudio API (Oscillator)
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const osc = ctx.createOscillator();
-          osc.connect(ctx.destination);
-          osc.start();
-        });
-      }
-      console.log('Pelengator toggled:', _isPelengatorOn);
+      if (_isPelengatorOn && !_isSoundOn) _soundButtonHandler();
     }
 
-    // Функция для обновления частоты (вызывается из существующей логики, НЕ создаёт звук)
-    function _updateSoundFrequency(freq) {
-      try {
-        if (_osc) {
-          _osc.frequency.value = freq;
-        } else if (_audioEl) {
-          // если играет mp3/ogg, можем менять playbackRate как приближённый эффект
-          _audioEl.playbackRate = Math.max(0.25, Math.min(3, freq / 440));
-        }
-      } catch (e) {
-        console.warn('updateSoundFrequency error', e);
-      }
-    }
+    _soundBtn.addEventListener("click", _soundButtonHandler);
+    _pelengatorBtn.addEventListener("click", _pelengatorButtonHandler);
 
-    // Подключаем обработчики к кнопкам — используем pointerdown (мобильные устройства) + click fallback
-    if (_pelengatorBtn) {
-      _pelengatorBtn.addEventListener('pointerdown', (e) => {
-        _pelengatorBtn.removeEventListener('click', _pelengatorButtonHandlerDirectFallback);
-        _pelengatorButtonHandlerDirect();
-      });
-      const _pelengatorButtonHandlerDirectFallback = () => _pelengatorButtonHandlerDirect();
-      _pelengatorBtn.addEventListener('click', _pelengatorButtonHandlerDirectFallback);
-    }
-    
+    // ---------------- Компас (имитация) ----------------
+    const needle = document.getElementById("needle");
+    let angle = 0;
+    setInterval(() => {
+      angle = (angle + 5) % 360;
+      needle.style.transform = `rotate(${angle}deg)`;
+      if (_osc) _osc.frequency.value = 200 + angle; // динамика звука
+    }, 500);
   </script>
-</head>
-<body>
-<!-- Размытый двигающийся туман -->
-<div class="fog-background" id="fogBackground">
-  <div class="fog-layer"></div>
-  <div class="fog-layer"></div>
-  <div class="fog-layer"></div>
-  <div class="fog-layer"></div>
-</div>
-
-<div class="compass-container">
-  <div class="compass-wrapper">
-    <!-- Волновые эффекты -->
-    <div class="wave-container" id="waveContainer">
-      <div class="wave"></div>
-      <div class="wave"></div>
-      <div class="wave"></div>
-      <div class="wave"></div>
-    </div>
-    
-    <!-- Дополнительные ripple эффекты -->
-    <div class="ripple-container">
-      <div class="ripple"></div>
-      <div class="ripple"></div>
-      <div class="ripple"></div>
-    </div>
-
-    <div class="compass-ring"></div>
-
-    <div class="compass-main">
-      <div class="distance-display" id="distance">— м</div>
-    </div>
-  </div>
-
-  <div class="info-panel" id="info">
-    <span class="status-indicator"></span>Инициализация…
-  </div>
-
-  <div class="info-panel" id="status" style="display: none;">
-    <span class="status-indicator"></span>Готов к работе
-  </div>
-
-  <!-- Кнопка активации пеленгатора -->
-  <button class="pelengator-button" id="pelengatorBtn">
-    🔊 Активировать пеленгатор
-  </button>
-
-</div>
 </body>
 </html>
