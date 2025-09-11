@@ -438,12 +438,12 @@
     }
 
     function getDistanceColor(distance) {
-      // Цветовые точки: красный -> оранжевый -> желтый -> зеленый
+      // Цветовые точки: красный -> оранжевый -> желтый -> зеленый (более насыщенные)
       const colorPoints = [
-        { distance: 3000, color: '#ff4757' }, // Красный
-        { distance: 2000, color: '#ffa502' }, // Оранжевый  
-        { distance: 500, color: '#ffd700' },  // Желтый
-        { distance: 0, color: '#51cf66' }     // Зеленый
+        { distance: 3000, color: '#dc2626' }, // Насыщенный красный
+        { distance: 2000, color: '#ea580c' }, // Насыщенный оранжевый  
+        { distance: 500, color: '#eab308' },  // Насыщенный желтый
+        { distance: 0, color: '#16a34a' }     // Насыщенный зеленый
       ];
       
       // Если расстояние больше максимального - возвращаем красный
@@ -484,27 +484,29 @@
       const color = getDistanceColor(distance);
       const rgb = hexToRgb(color);
       
-      // Применяем цвет к тексту расстояния
+      // Применяем цвет к тексту расстояния (более насыщенно)
       distEl.style.color = color;
-      distEl.style.textShadow = `0 0 15px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+      distEl.style.textShadow = `0 0 25px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`;
       
-      // Применяем цвет к кольцам компаса
+      // Применяем цвет к кольцам компаса (более насыщенно)
       ringsEl.forEach(ring => {
-        ring.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+        ring.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+        ring.style.boxShadow = `0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
       });
       
-      // Применяем цвет к волнам
+      // Применяем цвет к волнам (более насыщенно)
       const waves = waveEl.querySelectorAll('.wave');
       waves.forEach(wave => {
-        wave.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+        wave.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+        wave.style.boxShadow = `0 0 15px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
       });
       
-      // Применяем цвет к туману (градиент)
-      const alpha = Math.min(0.9, Math.max(0.3, 0.9 - (distance / 4000)));
+      // Применяем цвет к туману (более насыщенный градиент)
+      const alpha = Math.min(0.8, Math.max(0.4, 0.8 - (distance / 3000)));
       fogEl.style.background = `linear-gradient(135deg, 
         rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha}) 0%, 
-        rgba(${Math.round(rgb.r * 0.7)}, ${Math.round(rgb.g * 0.7)}, ${Math.round(rgb.b * 0.7)}, ${alpha * 0.8}) 50%, 
-        rgba(${Math.round(rgb.r * 1.2)}, ${Math.round(rgb.g * 1.2)}, ${Math.round(rgb.b * 1.2)}, ${alpha * 0.9}) 100%)`;
+        rgba(${Math.round(rgb.r * 0.8)}, ${Math.round(rgb.g * 0.8)}, ${Math.round(rgb.b * 0.8)}, ${alpha * 0.9}) 50%, 
+        rgba(${Math.round(rgb.r * 1.1)}, ${Math.round(rgb.g * 1.1)}, ${Math.round(rgb.b * 1.1)}, ${alpha * 0.95}) 100%)`;
     }
 
     // ---------------- Звук ----------------
@@ -545,6 +547,53 @@
 
       _isSoundOn = true;
       _updatePelengatorButtonUI();
+    }
+
+    // Функция для обновления параметров звука пеленгатора на основе расстояния
+    function updatePelengatorSound(distance, radius) {
+      if (!_isPelengatorOn || !_osc || !_gain) return;
+      
+      // Вычисляем громкость: чем ближе к цели, тем громче
+      let volume;
+      if (distance <= radius) {
+        volume = 0.15; // В радиусе - максимальная громкость
+      } else if (distance <= radius * 2) {
+        volume = 0.12; // Близко - высокая громкость
+      } else if (distance <= radius * 3) {
+        volume = 0.08; // Средне - средняя громкость
+      } else if (distance <= radius * 5) {
+        volume = 0.05; // Далеко - низкая громкость
+      } else {
+        volume = 0.02; // Очень далеко - минимальная громкость
+      }
+      
+      // Вычисляем частоту: чем ближе к цели, тем выше частота
+      let frequency;
+      if (distance <= radius) {
+        frequency = 1200; // В радиусе - высокий тон
+      } else if (distance <= radius * 2) {
+        frequency = 900; // Близко - средний-высокий тон
+      } else if (distance <= radius * 3) {
+        frequency = 600; // Средне - средний тон
+      } else if (distance <= radius * 5) {
+        frequency = 400; // Далеко - низкий тон
+      } else {
+        frequency = 250; // Очень далеко - очень низкий тон
+      }
+      
+      // Плавно изменяем параметры звука
+      try {
+        const currentTime = _audioCtx.currentTime;
+        _gain.gain.cancelScheduledValues(currentTime);
+        _gain.gain.setValueAtTime(_gain.gain.value, currentTime);
+        _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.1);
+        
+        _osc.frequency.cancelScheduledValues(currentTime);
+        _osc.frequency.setValueAtTime(_osc.frequency.value, currentTime);
+        _osc.frequency.linearRampToValueAtTime(frequency, currentTime + 0.1);
+      } catch (e) {
+        console.warn("Ошибка обновления звука пеленгатора:", e);
+      }
     }
 
     function _soundButtonHandler() {
@@ -621,24 +670,8 @@
         distEl.textContent = d + " м";
         updateDistanceColor(d, radius);
         
-        // Обновляем частоту звука если пеленгатор активен
-        if (_isPelengatorOn && _osc) {
-          let frequency;
-          if (d <= radius) {
-            frequency = 800; // В радиусе - высокий тон
-          } else if (d <= radius * 2) {
-            frequency = 600; // Близко - средний тон
-          } else if (d <= radius * 5) {
-            frequency = 400; // Далеко - низкий тон
-          } else {
-            frequency = 200; // Очень далеко - очень низкий тон
-          }
-          try {
-            _osc.frequency.value = frequency;
-          } catch (e) {
-            console.warn('Frequency update failed', e);
-          }
-        }
+        // Обновляем звук пеленгатора (громкость и частота) на основе расстояния
+        updatePelengatorSound(d, radius);
         
         infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
         
