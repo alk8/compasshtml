@@ -1,23 +1,129 @@
-<button id="test">ТЕСТ ЗВУКА</button>
-<script>
-let ctx, osc;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Компас с пеленгатором</title>
 
-document.getElementById("test").addEventListener("click", () => {
-  if (!ctx) {
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-  }
+  <!-- Telegram WebApp API -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  if (!osc) {
-    osc = ctx.createOscillator();
-    osc.frequency.value = 440;
-    osc.connect(ctx.destination);
-    osc.start();
-    console.log("Звук включен ✅");
-  } else {
-    osc.stop();
-    osc.disconnect();
-    osc = null;
-    console.log("Звук выключен ❌");
-  }
-});
-</script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 20px; background: #f4f4f4; }
+    #compass {
+      width: 220px; height: 220px; border: 2px solid #000;
+      border-radius: 50%; margin: 20px auto; position: relative;
+      background: white;
+    }
+    #needle {
+      width: 2px; height: 100px; background: red;
+      position: absolute; top: 10px; left: 50%;
+      transform-origin: bottom center;
+    }
+    button {
+      margin: 10px; padding: 12px 20px;
+      font-size: 16px; border-radius: 12px;
+      border: none; cursor: pointer; transition: 0.2s;
+    }
+    .active { background: #0a0; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <h2>🧭 Компас с пеленгатором</h2>
+  <div id="compass">
+    <div id="needle"></div>
+  </div>
+
+  <button id="soundBtn">🔊 Включить звук</button>
+  <button id="pelengatorBtn">🔊 Активировать пеленгатор</button>
+
+  <script>
+    // Telegram WebApp init
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // ---------------- Звук ----------------
+    let _audioEl = null, _audioCtx = null, _osc = null, _gain = null;
+    let _isSoundOn = false, _isPelengatorOn = false;
+    const _soundBtn = document.getElementById('soundBtn');
+    const _pelengatorBtn = document.getElementById('pelengatorBtn');
+
+    function _updateSoundButtonUI() {
+      _soundBtn.textContent = _isSoundOn ? '🔇 Отключить звук' : '🔊 Включить звук';
+      _soundBtn.classList.toggle('active', _isSoundOn);
+    }
+    function _updatePelengatorButtonUI() {
+      _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
+      _pelengatorBtn.classList.toggle('active', _isPelengatorOn);
+    }
+
+    function _stopAllAudio() {
+      try {
+        if (_audioEl) { _audioEl.pause(); _audioEl = null; }
+        if (_osc) { _osc.stop(); _osc.disconnect(); _osc = null; }
+        if (_gain) { _gain.disconnect(); _gain = null; }
+      } catch(e) { console.warn(e); }
+      _isSoundOn = false;
+      _updateSoundButtonUI();
+    }
+
+    function _startOscillatorImmediate() {
+      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === "suspended") _audioCtx.resume();
+
+      _gain = _audioCtx.createGain();
+      _gain.gain.value = 0.05;
+
+      _osc = _audioCtx.createOscillator();
+      _osc.type = "sine";
+      _osc.frequency.value = 440;
+
+      _osc.connect(_gain);
+      _gain.connect(_audioCtx.destination);
+      _osc.start();
+
+      _isSoundOn = true;
+      _updateSoundButtonUI();
+    }
+
+    function _soundButtonHandler() {
+      if (_isSoundOn) { _stopAllAudio(); return; }
+
+      try {
+        const SOUND_URL = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
+        _audioEl = new Audio(SOUND_URL);
+        _audioEl.loop = true;
+        _audioEl.playsInline = true;
+        _audioEl.play().then(() => {
+          _isSoundOn = true;
+          _updateSoundButtonUI();
+        }).catch(err => {
+          console.warn("Fallback to oscillator:", err);
+          _startOscillatorImmediate();
+        });
+      } catch (e) {
+        _startOscillatorImmediate();
+      }
+    }
+
+    function _pelengatorButtonHandler() {
+      _isPelengatorOn = !_isPelengatorOn;
+      _updatePelengatorButtonUI();
+      if (_isPelengatorOn && !_isSoundOn) _soundButtonHandler();
+    }
+
+    _soundBtn.addEventListener("click", _soundButtonHandler);
+    _pelengatorBtn.addEventListener("click", _pelengatorButtonHandler);
+
+    // ---------------- Компас (имитация) ----------------
+    const needle = document.getElementById("needle");
+    let angle = 0;
+    setInterval(() => {
+      angle = (angle + 5) % 360;
+      needle.style.transform = `rotate(${angle}deg)`;
+      if (_osc) _osc.frequency.value = 200 + angle; // динамика звука
+    }, 500);
+  </script>
+</body>
+</html>
