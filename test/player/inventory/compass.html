@@ -924,7 +924,11 @@
           } else {
             frequency = 200; // Очень далеко - очень низкий тон
           }
-          _osc.frequency.value = frequency;
+          try {
+            _osc.frequency.value = frequency;
+          } catch (e) {
+            console.warn('Frequency update failed', e);
+          }
         }
         
         infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
@@ -944,7 +948,15 @@
           
           // Останавливаем звук при достижении цели
           if (_isSoundOn) {
-            _stopAllAudio();
+            try {
+              if (_audioEl) { _audioEl.pause(); _audioEl = null; }
+              if (_osc) { _osc.stop(); _osc.disconnect(); _osc = null; }
+              if (_gain) { _gain.disconnect(); _gain = null; }
+            } catch(e) { console.warn(e); }
+            _isSoundOn = false;
+            _isPelengatorOn = false;
+            _pelengatorBtn.textContent = '🔊 Активировать пеленгатор';
+            _pelengatorBtn.classList.remove('disabled');
           }
           
           notifyBot(uid);
@@ -972,11 +984,13 @@
     // ---------------- Звук ----------------
     let _audioEl = null, _audioCtx = null, _osc = null, _gain = null;
     let _isSoundOn = false, _isPelengatorOn = false;
+    const _soundBtn = document.getElementById('soundBtn');
     const _pelengatorBtn = document.getElementById('pelengatorBtn');
 
-    function _updatePelengatorButtonUI() {
-      _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
-      _pelengatorBtn.classList.toggle('disabled', _isPelengatorOn);
+    // Простая кнопка звука (как в рабочем коде)
+    function _updateSoundButtonUI() {
+      _soundBtn.textContent = _isSoundOn ? '🔇 Отключить звук' : '🔊 Включить звук';
+      _soundBtn.classList.toggle('disabled', _isSoundOn);
     }
 
     function _stopAllAudio() {
@@ -986,7 +1000,7 @@
         if (_gain) { _gain.disconnect(); _gain = null; }
       } catch(e) { console.warn(e); }
       _isSoundOn = false;
-      _updatePelengatorButtonUI();
+      _updateSoundButtonUI();
     }
 
     function _startOscillatorImmediate() {
@@ -1005,7 +1019,7 @@
       _osc.start();
 
       _isSoundOn = true;
-      _updatePelengatorButtonUI();
+      _updateSoundButtonUI();
     }
 
     function _soundButtonHandler() {
@@ -1018,7 +1032,7 @@
         _audioEl.playsInline = true;
         _audioEl.play().then(() => {
           _isSoundOn = true;
-          _updatePelengatorButtonUI();
+          _updateSoundButtonUI();
         }).catch(err => {
           console.warn("Fallback to oscillator:", err);
           _startOscillatorImmediate();
@@ -1026,6 +1040,14 @@
       } catch (e) {
         _startOscillatorImmediate();
       }
+    }
+
+    _soundBtn.addEventListener("click", _soundButtonHandler);
+
+    // Обработчик пеленгатора (упрощенный)
+    function _updatePelengatorButtonUI() {
+      _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
+      _pelengatorBtn.classList.toggle('disabled', _isPelengatorOn);
     }
 
     function _pelengatorButtonHandler() {
@@ -1078,6 +1100,11 @@
   <div class="info-panel" id="status" style="display: none;">
     <span class="status-indicator"></span>Готов к работе
   </div>
+
+  <!-- Кнопка включения звука -->
+  <button class="pelengator-button" id="soundBtn" style="margin-bottom: 10px;">
+    🔊 Включить звук
+  </button>
 
   <!-- Кнопка активации пеленгатора -->
   <button class="pelengator-button" id="pelengatorBtn">
