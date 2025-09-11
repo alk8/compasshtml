@@ -527,6 +527,7 @@
       } catch(e) { console.warn(e); }
       _isSoundOn = false;
       _isPelengatorOn = false; // Добавляем сброс состояния пеленгатора
+      _lastPelengatorTime = 0; // Сбрасываем таймер пеленгатора
       _updatePelengatorButtonUI();
     }
 
@@ -535,7 +536,7 @@
       if (_audioCtx.state === "suspended") _audioCtx.resume();
 
       _gain = _audioCtx.createGain();
-      _gain.gain.value = 0.05;
+      _gain.gain.value = 0; // Начинаем с нулевой громкости
 
       _osc = _audioCtx.createOscillator();
       _osc.type = "sine";
@@ -549,9 +550,25 @@
       _updatePelengatorButtonUI();
     }
 
+    // Переменные для управления таймером пеленгатора
+    let _pelengatorTimer = null;
+    let _lastPelengatorTime = 0;
+
     // Функция для обновления параметров звука пеленгатора на основе расстояния
     function updatePelengatorSound(distance, radius) {
       if (!_isPelengatorOn || !_osc || !_gain) return;
+      
+      // Вычисляем интервал между писками: от 3000мс на 1000м до 200мс на 25м
+      let interval;
+      if (distance <= 25) {
+        interval = 200; // 25м - очень часто (5 писков в секунду)
+      } else if (distance <= 1000) {
+        // Пропорциональное уменьшение от 200мс до 3000мс
+        const progress = (1000 - distance) / (1000 - 25); // от 0 до 1
+        interval = 200 + (3000 - 200) * (1 - progress);
+      } else {
+        interval = 3000; // Больше 1000м - медленно (1 писк в 3 секунды)
+      }
       
       // Вычисляем громкость: чем ближе к цели, тем громче
       let volume;
@@ -581,18 +598,29 @@
         frequency = 250; // Очень далеко - очень низкий тон
       }
       
-      // Плавно изменяем параметры звука
-      try {
-        const currentTime = _audioCtx.currentTime;
-        _gain.gain.cancelScheduledValues(currentTime);
-        _gain.gain.setValueAtTime(_gain.gain.value, currentTime);
-        _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.1);
+      // Проверяем, нужно ли пищать сейчас
+      const now = Date.now();
+      if (now - _lastPelengatorTime >= interval) {
+        _lastPelengatorTime = now;
         
-        _osc.frequency.cancelScheduledValues(currentTime);
-        _osc.frequency.setValueAtTime(_osc.frequency.value, currentTime);
-        _osc.frequency.linearRampToValueAtTime(frequency, currentTime + 0.1);
-      } catch (e) {
-        console.warn("Ошибка обновления звука пеленгатора:", e);
+        // Создаем короткий писк
+        try {
+          const currentTime = _audioCtx.currentTime;
+          
+          // Быстро включаем звук
+          _gain.gain.cancelScheduledValues(currentTime);
+          _gain.gain.setValueAtTime(0, currentTime);
+          _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.02);
+          
+          // Устанавливаем частоту
+          _osc.frequency.cancelScheduledValues(currentTime);
+          _osc.frequency.setValueAtTime(frequency, currentTime);
+          
+          // Быстро выключаем звук через 150мс
+          _gain.gain.linearRampToValueAtTime(0, currentTime + 0.15);
+        } catch (e) {
+          console.warn("Ошибка создания писка пеленгатора:", e);
+        }
       }
     }
 
