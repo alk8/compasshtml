@@ -156,6 +156,128 @@
       gap: 20px;
     }
 
+    /* Волновые эффекты */
+    .wave-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      pointer-events: none;
+    }
+
+    .wave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid rgba(0, 212, 255, 0.6);
+      border-radius: 50%;
+      opacity: 0;
+      animation: waveExpand 3s ease-out infinite;
+    }
+
+    .wave:nth-child(1) {
+      animation-delay: 0s;
+      border-color: rgba(0, 212, 255, 0.8);
+    }
+
+    .wave:nth-child(2) {
+      animation-delay: 1s;
+      border-color: rgba(0, 212, 255, 0.6);
+    }
+
+    .wave:nth-child(3) {
+      animation-delay: 2s;
+      border-color: rgba(0, 212, 255, 0.4);
+    }
+
+    .wave:nth-child(4) {
+      animation-delay: 3s;
+      border-color: rgba(0, 212, 255, 0.2);
+    }
+
+    /* Цветовые волны в зависимости от расстояния */
+    .wave-container.very-far .wave {
+      border-color: rgba(128, 128, 128, 0.6);
+    }
+
+    .wave-container.far .wave {
+      border-color: rgba(220, 20, 60, 0.6);
+    }
+
+    .wave-container.medium .wave {
+      border-color: rgba(255, 165, 0, 0.6);
+    }
+
+    .wave-container.close .wave {
+      border-color: rgba(50, 205, 50, 0.6);
+    }
+
+    @keyframes waveExpand {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.8;
+      }
+      100% {
+        width: 300px;
+        height: 300px;
+        opacity: 0;
+      }
+    }
+
+    /* Дополнительные волны для эффекта ripple */
+    .ripple-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      pointer-events: none;
+    }
+
+    .ripple {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      opacity: 0;
+      animation: rippleExpand 2s ease-out infinite;
+    }
+
+    .ripple:nth-child(1) {
+      animation-delay: 0.5s;
+    }
+
+    .ripple:nth-child(2) {
+      animation-delay: 1.5s;
+    }
+
+    .ripple:nth-child(3) {
+      animation-delay: 2.5s;
+    }
+
+    @keyframes rippleExpand {
+      0% {
+        width: 20px;
+        height: 20px;
+        opacity: 0.8;
+      }
+      100% {
+        width: 200px;
+        height: 200px;
+        opacity: 0;
+      }
+    }
+
     .compass-wrapper {
       width: 240px;
       height: 240px;
@@ -424,19 +546,90 @@
     }
 
 
+    // === PULSE WAVE EFFECT ===
+    function createPulseWave() {
+      const waveContainer = document.getElementById('waveContainer');
+      if (!waveContainer) return;
+      
+      // Создаем временную волну
+      const pulseWave = document.createElement('div');
+      pulseWave.className = 'wave';
+      pulseWave.style.animation = 'waveExpand 1.5s ease-out forwards';
+      pulseWave.style.animationDelay = '0s';
+      
+      // Добавляем в контейнер
+      waveContainer.appendChild(pulseWave);
+      
+      // Удаляем после анимации
+      setTimeout(() => {
+        if (pulseWave.parentNode) {
+          waveContainer.removeChild(pulseWave);
+        }
+      }, 1500);
+    }
+
+    // === SUCCESS WAVES EFFECT ===
+    function createSuccessWaves() {
+      const waveContainer = document.getElementById('waveContainer');
+      if (!waveContainer) return;
+      
+      // Создаем несколько волн одновременно для эффекта взрыва
+      for (let i = 0; i < 6; i++) {
+        const successWave = document.createElement('div');
+        successWave.className = 'wave';
+        successWave.style.animation = 'waveExpand 2s ease-out forwards';
+        successWave.style.animationDelay = `${i * 0.1}s`;
+        successWave.style.borderColor = 'rgba(50, 205, 50, 0.8)';
+        successWave.style.borderWidth = '3px';
+        
+        // Добавляем в контейнер
+        waveContainer.appendChild(successWave);
+        
+        // Удаляем после анимации
+        setTimeout(() => {
+          if (successWave.parentNode) {
+            waveContainer.removeChild(successWave);
+          }
+        }, 2000 + (i * 100));
+      }
+    }
+
+    // === WAVE INTENSITY UPDATE ===
+    function updateWaveIntensity(distance, radius) {
+      const waves = document.querySelectorAll('.wave');
+      
+      // Вычисляем интенсивность на основе расстояния
+      let intensity = 1;
+      if (distance <= radius * 2) {
+        intensity = 1.5; // Увеличиваем интенсивность при приближении
+      }
+      if (distance <= radius) {
+        intensity = 2; // Максимальная интенсивность в радиусе
+      }
+      
+      // Применяем интенсивность к волнам
+      waves.forEach((wave, index) => {
+        const delay = index * 1000; // 1 секунда между волнами
+        wave.style.animationDuration = `${3 / intensity}s`;
+        wave.style.opacity = Math.min(1, intensity * 0.6);
+      });
+    }
+
     // === DISTANCE COLOR LOGIC ===
     function updateDistanceColor(distance, radius) {
       const distEl = document.getElementById('distance');
       const containerEl = document.querySelector('.compass-container');
       const ringsEl = document.querySelectorAll('.compass-ring');
       const fogEl = document.getElementById('fogBackground');
+      const waveEl = document.getElementById('waveContainer');
       
-      if (!distEl || !containerEl || !fogEl) return;
+      if (!distEl || !containerEl || !fogEl || !waveEl) return;
       
       // Убираем все классы цветов
       distEl.classList.remove('very-far', 'far', 'medium', 'close');
       containerEl.classList.remove('very-far', 'far', 'medium', 'close');
       fogEl.classList.remove('very-far', 'far', 'medium', 'close');
+      waveEl.classList.remove('very-far', 'far', 'medium', 'close');
       ringsEl.forEach(ring => {
         ring.classList.remove('very-far', 'far', 'medium', 'close');
       });
@@ -456,10 +649,11 @@
         colorClass = 'close';
       }
       
-      // Применяем цветовую индикацию ко всем элементам включая туман
+      // Применяем цветовую индикацию ко всем элементам включая туман и волны
       distEl.classList.add(colorClass);
       containerEl.classList.add(colorClass);
       fogEl.classList.add(colorClass);
+      waveEl.classList.add(colorClass);
       ringsEl.forEach(ring => {
         ring.classList.add(colorClass);
       });
@@ -497,10 +691,16 @@
           setTimeout(() => {
             distEl.style.transform = 'scale(1)';
           }, 150);
+          
+          // Создаем дополнительную волну при значительном изменении расстояния
+          createPulseWave();
         }
         
         distEl.textContent = d + " м";
         updateDistanceColor(d, radius);
+        
+        // Увеличиваем интенсивность волн при приближении к цели
+        updateWaveIntensity(d, radius);
         
         infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
         
@@ -508,6 +708,10 @@
           fired = true;
           statusEl.innerHTML = '<span class="status-indicator success"></span>Цель достигнута!';
           distEl.classList.add('close');
+          
+          // Создаем взрыв волн при достижении цели
+          createSuccessWaves();
+          
           notifyBot(uid);
         }
         
@@ -542,6 +746,21 @@
 
 <div class="compass-container">
   <div class="compass-wrapper">
+    <!-- Волновые эффекты -->
+    <div class="wave-container" id="waveContainer">
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+    </div>
+    
+    <!-- Дополнительные ripple эффекты -->
+    <div class="ripple-container">
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+    </div>
+
     <div class="compass-ring"></div>
 
     <div class="compass-main">
