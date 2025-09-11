@@ -9,7 +9,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
-    body { 
+    body {
       font-family: sans-serif; 
       text-align: center; 
       margin: 20px; 
@@ -18,7 +18,7 @@
       min-height: 100vh;
       overflow: hidden;
     }
-    
+
     /* Размытый двигающийся туман */
     .fog-background {
       position: fixed;
@@ -105,18 +105,18 @@
 
 
     @keyframes waveExpand {
-      0% { 
-        width: 0; 
-        height: 0; 
-        opacity: 0.8; 
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 0.8;
       }
       70% { 
         opacity: 0.4; 
       }
-      100% { 
-        width: 250px; 
-        height: 250px; 
-        opacity: 0; 
+      100% {
+        width: 250px;
+        height: 250px;
+        opacity: 0;
       }
     }
 
@@ -533,22 +533,39 @@
     }
 
     function _startOscillatorImmediate() {
-      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_audioCtx.state === "suspended") _audioCtx.resume();
+      if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      // Принудительно активируем AudioContext
+      const activateAudio = () => {
+        if (_audioCtx.state === "suspended") {
+          return _audioCtx.resume();
+        }
+        return Promise.resolve();
+      };
+      
+      activateAudio().then(() => {
+        console.log("AudioContext готов, создаем осциллятор");
+        
+        _gain = _audioCtx.createGain();
+        _gain.gain.value = 0; // Начинаем с нулевой громкости
 
-      _gain = _audioCtx.createGain();
-      _gain.gain.value = 0; // Начинаем с нулевой громкости
+        _osc = _audioCtx.createOscillator();
+        _osc.type = "sine";
+        _osc.frequency.value = 440;
 
-      _osc = _audioCtx.createOscillator();
-      _osc.type = "sine";
-      _osc.frequency.value = 440;
+        _osc.connect(_gain);
+        _gain.connect(_audioCtx.destination);
+        _osc.start();
 
-      _osc.connect(_gain);
-      _gain.connect(_audioCtx.destination);
-      _osc.start();
-
-      _isSoundOn = true;
-      _updatePelengatorButtonUI();
+        _isSoundOn = true;
+        _updatePelengatorButtonUI();
+        
+        console.log("Осциллятор запущен, звук готов");
+      }).catch(e => {
+        console.error("Ошибка активации звука:", e);
+      });
     }
 
     // Переменные для управления таймером пеленгатора
@@ -559,48 +576,23 @@
 
     // Функция для создания одного писка пеленгатора
     function createPelengatorBeep(distance, radius) {
-      if (!_osc || !_gain) return;
-      
-      // Вычисляем громкость: чем ближе к цели, тем громче
-      let volume;
-      if (distance <= radius) {
-        volume = 0.15; // В радиусе - максимальная громкость
-      } else if (distance <= radius * 2) {
-        volume = 0.12; // Близко - высокая громкость
-      } else if (distance <= radius * 3) {
-        volume = 0.08; // Средне - средняя громкость
-      } else if (distance <= radius * 5) {
-        volume = 0.05; // Далеко - низкая громкость
-      } else {
-        volume = 0.02; // Очень далеко - минимальная громкость
+      if (!_osc || !_gain) {
+        console.log("Пеленгатор: осциллятор или гейн не готовы");
+        return;
       }
+
+      console.log(`Создаем писк пеленгатора: расстояние ${distance}м, радиус ${radius}м`);
       
-      // Вычисляем частоту: чем ближе к цели, тем выше частота
-      let frequency;
-      if (distance <= radius) {
-        frequency = 1200; // В радиусе - высокий тон
-      } else if (distance <= radius * 2) {
-        frequency = 900; // Близко - средний-высокий тон
-      } else if (distance <= radius * 3) {
-        frequency = 600; // Средне - средний тон
-      } else if (distance <= radius * 5) {
-        frequency = 400; // Далеко - низкий тон
-      } else {
-        frequency = 250; // Очень далеко - очень низкий тон
-      }
-      
-      // Создаем короткий писк
+      // Создаем короткий писк с текущими параметрами звука
       try {
         const currentTime = _audioCtx.currentTime;
         
-        // Быстро включаем звук
+        // Быстро включаем звук (громкость уже установлена в updateSoundParameters)
         _gain.gain.cancelScheduledValues(currentTime);
         _gain.gain.setValueAtTime(0, currentTime);
-        _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.02);
+        _gain.gain.linearRampToValueAtTime(_gain.gain.value, currentTime + 0.02);
         
-        // Устанавливаем частоту
-        _osc.frequency.cancelScheduledValues(currentTime);
-        _osc.frequency.setValueAtTime(frequency, currentTime);
+        // Частота уже установлена в updateSoundParameters, не изменяем её
         
         // Быстро выключаем звук через 150мс
         _gain.gain.linearRampToValueAtTime(0, currentTime + 0.15);
@@ -631,7 +623,12 @@
       
       _pelengatorTimer = setInterval(() => {
         if (_isPelengatorOn) {
+          console.log(`Таймер пеленгатора: создаем писк через ${interval}мс`);
           createPelengatorBeep(_currentDistance, _currentRadius);
+        } else {
+          console.log("Пеленгатор выключен, останавливаем таймер");
+          clearInterval(_pelengatorTimer);
+          _pelengatorTimer = null;
         }
       }, interval);
     }
@@ -644,8 +641,63 @@
       _currentDistance = distance;
       _currentRadius = radius;
       
+      // Обновляем параметры звука в реальном времени
+      updateSoundParameters(distance, radius);
+      
       // Перезапускаем таймер с новым интервалом
       startPelengatorTimer();
+    }
+
+    // Функция для обновления параметров звука в реальном времени
+    function updateSoundParameters(distance, radius) {
+      if (!_osc || !_gain) return;
+      
+      // Вычисляем громкость: чем ближе к цели, тем громче
+      let volume;
+      if (distance <= radius) {
+        volume = 0.15; // В радиусе - максимальная громкость
+      } else if (distance <= radius * 2) {
+        volume = 0.12; // Близко - высокая громкость
+      } else if (distance <= radius * 3) {
+        volume = 0.08; // Средне - средняя громкость
+      } else if (distance <= radius * 5) {
+        volume = 0.05; // Далеко - низкая громкость
+      } else {
+        volume = 0.02; // Очень далеко - минимальная громкость
+      }
+      
+      // Вычисляем частоту: чем ближе к цели, тем выше частота
+      let frequency;
+      if (distance <= radius) {
+        frequency = 1200; // В радиусе - высокий тон
+      } else if (distance <= radius * 2) {
+        frequency = 900; // Близко - средний-высокий тон
+      } else if (distance <= radius * 3) {
+        frequency = 600; // Средне - средний тон
+      } else if (distance <= radius * 5) {
+        frequency = 400; // Далеко - низкий тон
+      } else {
+        frequency = 250; // Очень далеко - очень низкий тон
+      }
+      
+      // Обновляем параметры звука
+      try {
+        const currentTime = _audioCtx.currentTime;
+        
+        // Плавно изменяем громкость
+        _gain.gain.cancelScheduledValues(currentTime);
+        _gain.gain.setValueAtTime(_gain.gain.value, currentTime);
+        _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.1);
+        
+        // Плавно изменяем частоту
+        _osc.frequency.cancelScheduledValues(currentTime);
+        _osc.frequency.setValueAtTime(_osc.frequency.value, currentTime);
+        _osc.frequency.linearRampToValueAtTime(frequency, currentTime + 0.1);
+        
+        console.log(`Обновляем звук: расстояние ${distance}м, громкость ${volume.toFixed(3)}, частота ${frequency}Hz`);
+      } catch (e) {
+        console.warn("Ошибка обновления параметров звука:", e);
+      }
     }
 
     function _soundButtonHandler() {
@@ -673,8 +725,23 @@
       _updatePelengatorButtonUI();
       
       if (_isPelengatorOn && !_isSoundOn) {
-        // Включаем звук
-        _soundButtonHandler();
+        // Принудительно активируем AudioContext при пользовательском действии
+        if (!_audioCtx) {
+          _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Принудительно возобновляем AudioContext если он приостановлен
+        if (_audioCtx.state === "suspended") {
+          _audioCtx.resume().then(() => {
+            console.log("AudioContext активирован");
+            _soundButtonHandler();
+          }).catch(e => {
+            console.error("Ошибка активации AudioContext:", e);
+            _soundButtonHandler(); // Пробуем все равно
+          });
+        } else {
+          _soundButtonHandler();
+        }
       } else if (!_isPelengatorOn && _isSoundOn) {
         // Выключаем звук
         _stopAllAudio();
