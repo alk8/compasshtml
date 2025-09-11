@@ -28,7 +28,7 @@
       height: 100%;
       z-index: -1;
       opacity: 0.6;
-      transition: all 2s ease-in-out;
+      transition: all 2s ease-in-out, background 1s ease;
     }
 
     .fog-layer {
@@ -95,6 +95,7 @@
       border-radius: 50%;
       opacity: 0;
       animation: waveExpand 3s ease-out infinite;
+      transition: border-color 1s ease;
     }
 
     .wave:nth-child(1) { animation-delay: 0s; border-color: rgba(0, 212, 255, 0.8); }
@@ -102,10 +103,21 @@
     .wave:nth-child(3) { animation-delay: 2s; border-color: rgba(0, 212, 255, 0.4); }
     .wave:nth-child(4) { animation-delay: 3s; border-color: rgba(0, 212, 255, 0.2); }
 
+
     @keyframes waveExpand {
-      0% { width: 0; height: 0; opacity: 1; }
-      50% { opacity: 0.8; }
-      100% { width: 250px; height: 250px; opacity: 0; }
+      0% { 
+        width: 0; 
+        height: 0; 
+        opacity: 0.8; 
+      }
+      70% { 
+        opacity: 0.4; 
+      }
+      100% { 
+        width: 250px; 
+        height: 250px; 
+        opacity: 0; 
+      }
     }
 
     .compass-wrapper {
@@ -159,16 +171,16 @@
       transition: all 0.3s ease;
     }
 
-    /* Цветовые состояния расстояния */
-    .distance-display.very-far { color: #ff4757; text-shadow: 0 0 15px rgba(255, 71, 87, 0.6); }
-    .distance-display.far { color: #ffa502; text-shadow: 0 0 15px rgba(255, 165, 2, 0.6); }
-    .distance-display.medium { color: #ffd700; text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
-    .distance-display.close { color: #51cf66; text-shadow: 0 0 15px rgba(81, 207, 102, 0.6); }
-
-    .compass-ring.very-far { border-color: rgba(255, 71, 87, 0.4); }
-    .compass-ring.far { border-color: rgba(255, 165, 2, 0.4); }
-    .compass-ring.medium { border-color: rgba(255, 215, 0, 0.4); }
-    .compass-ring.close { border-color: rgba(81, 207, 102, 0.4); }
+    /* Плавные переходы для динамических цветов */
+    .distance-display {
+      transition: color 1s ease, text-shadow 1s ease;
+    }
+    .compass-ring {
+      transition: border-color 1s ease;
+    }
+    .wave {
+      transition: border-color 1s ease;
+    }
 
     @keyframes pulseRing {
       0%, 100% { transform: scale(1); opacity: 0.3; }
@@ -398,44 +410,101 @@
       }
     }
 
+    // === ЦВЕТОВАЯ ИНТЕРПОЛЯЦИЯ ===
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    function interpolateColor(color1, color2, factor) {
+      const rgb1 = hexToRgb(color1);
+      const rgb2 = hexToRgb(color2);
+      
+      if (!rgb1 || !rgb2) return color1;
+      
+      const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * factor);
+      const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * factor);
+      const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * factor);
+      
+      return rgbToHex(r, g, b);
+    }
+
+    function getDistanceColor(distance) {
+      // Цветовые точки: красный -> оранжевый -> желтый -> зеленый
+      const colorPoints = [
+        { distance: 3000, color: '#ff4757' }, // Красный
+        { distance: 2000, color: '#ffa502' }, // Оранжевый  
+        { distance: 500, color: '#ffd700' },  // Желтый
+        { distance: 0, color: '#51cf66' }     // Зеленый
+      ];
+      
+      // Если расстояние больше максимального - возвращаем красный
+      if (distance >= colorPoints[0].distance) {
+        return colorPoints[0].color;
+      }
+      
+      // Находим две ближайшие цветовые точки
+      for (let i = 0; i < colorPoints.length - 1; i++) {
+        const point1 = colorPoints[i];
+        const point2 = colorPoints[i + 1];
+        
+        if (distance >= point2.distance && distance <= point1.distance) {
+          // Вычисляем коэффициент интерполяции
+          const range = point1.distance - point2.distance;
+          const position = distance - point2.distance;
+          const factor = position / range;
+          
+          // Интерполируем цвет
+          return interpolateColor(point2.color, point1.color, factor);
+        }
+      }
+      
+      // Если расстояние меньше минимального - возвращаем зеленый
+      return colorPoints[colorPoints.length - 1].color;
+    }
+
     // === DISTANCE COLOR LOGIC ===
     function updateDistanceColor(distance, radius) {
       const distEl = document.getElementById('distance');
-      const containerEl = document.querySelector('.compass-container');
       const ringsEl = document.querySelectorAll('.compass-ring');
       const fogEl = document.getElementById('fogBackground');
       const waveEl = document.getElementById('waveContainer');
       
-      if (!distEl || !containerEl || !fogEl || !waveEl) return;
+      if (!distEl || !fogEl || !waveEl) return;
       
-      // Убираем все классы цветов
-      distEl.classList.remove('very-far', 'far', 'medium', 'close');
-      containerEl.classList.remove('very-far', 'far', 'medium', 'close');
-      fogEl.classList.remove('very-far', 'far', 'medium', 'close');
-      waveEl.classList.remove('very-far', 'far', 'medium', 'close');
+      // Получаем цвет на основе расстояния
+      const color = getDistanceColor(distance);
+      const rgb = hexToRgb(color);
+      
+      // Применяем цвет к тексту расстояния
+      distEl.style.color = color;
+      distEl.style.textShadow = `0 0 15px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+      
+      // Применяем цвет к кольцам компаса
       ringsEl.forEach(ring => {
-        ring.classList.remove('very-far', 'far', 'medium', 'close');
+        ring.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
       });
       
-      let colorClass = '';
-      if (distance > 3000) {
-        colorClass = 'very-far';
-      } else if (distance > 2000) {
-        colorClass = 'far';
-      } else if (distance > 500) {
-        colorClass = 'medium';
-      } else {
-        colorClass = 'close';
-      }
-      
-      // Применяем цветовую индикацию
-      distEl.classList.add(colorClass);
-      containerEl.classList.add(colorClass);
-      fogEl.classList.add(colorClass);
-      waveEl.classList.add(colorClass);
-      ringsEl.forEach(ring => {
-        ring.classList.add(colorClass);
+      // Применяем цвет к волнам
+      const waves = waveEl.querySelectorAll('.wave');
+      waves.forEach(wave => {
+        wave.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
       });
+      
+      // Применяем цвет к туману (градиент)
+      const alpha = Math.min(0.9, Math.max(0.3, 0.9 - (distance / 4000)));
+      fogEl.style.background = `linear-gradient(135deg, 
+        rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha}) 0%, 
+        rgba(${Math.round(rgb.r * 0.7)}, ${Math.round(rgb.g * 0.7)}, ${Math.round(rgb.b * 0.7)}, ${alpha * 0.8}) 50%, 
+        rgba(${Math.round(rgb.r * 1.2)}, ${Math.round(rgb.g * 1.2)}, ${Math.round(rgb.b * 1.2)}, ${alpha * 0.9}) 100%)`;
     }
 
     // ---------------- Звук ----------------
@@ -455,6 +524,7 @@
         if (_gain) { _gain.disconnect(); _gain = null; }
       } catch(e) { console.warn(e); }
       _isSoundOn = false;
+      _isPelengatorOn = false; // Добавляем сброс состояния пеленгатора
       _updatePelengatorButtonUI();
     }
 
@@ -500,7 +570,14 @@
     function _pelengatorButtonHandler() {
       _isPelengatorOn = !_isPelengatorOn;
       _updatePelengatorButtonUI();
-      if (_isPelengatorOn && !_isSoundOn) _soundButtonHandler();
+      
+      if (_isPelengatorOn && !_isSoundOn) {
+        // Включаем звук
+        _soundButtonHandler();
+      } else if (!_isPelengatorOn && _isSoundOn) {
+        // Выключаем звук
+        _stopAllAudio();
+      }
     }
 
     _pelengatorBtn.addEventListener("click", _pelengatorButtonHandler);
