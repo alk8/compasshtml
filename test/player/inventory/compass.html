@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#39d98a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="format-detection" content="telephone=no"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <!-- Telegram WebApp specific meta tags -->
+  <meta name="telegram:web_app" content="true"/>
+  <meta name="telegram:web_app:version" content="6.0"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:;">
+  <!-- Telegram WebApp API -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <title>Компас</title>
+  <style>
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .compass-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .compass-wrapper {
+      width: 240px;
+      height: 240px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .compass-ring {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      animation: pulseRing 2s ease-in-out infinite;
+    }
+
+    .compass-main {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1), transparent 50%),
+                  radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 70%),
+                  linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      backdrop-filter: blur(10px);
+      box-shadow: 
+        0 0 30px rgba(0, 150, 255, 0.3),
+        inset 0 0 30px rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .compass-main:hover {
+      transform: scale(1.02);
+      box-shadow: 
+        0 0 40px rgba(0, 150, 255, 0.4),
+        inset 0 0 40px rgba(255, 255, 255, 0.15);
+    }
+
+    .distance-display {
+      font-size: 36px;
+      font-weight: 300;
+      text-align: center;
+      background: linear-gradient(45deg, #00d4ff, #ffffff, #00d4ff);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 3s ease-in-out infinite;
+      letter-spacing: -1px;
+      transition: all 0.3s ease;
+    }
+
+    /* Элегантная цветовая индикация расстояния */
+    .distance-display.very-far {
+      color: #ff4757;
+      text-shadow: 0 0 15px rgba(255, 71, 87, 0.6);
+    }
+
+    .distance-display.far {
+      color: #ffa502;
+      text-shadow: 0 0 15px rgba(255, 165, 2, 0.6);
+    }
+
+    .distance-display.medium {
+      color: #ffd700;
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    }
+
+    .distance-display.close {
+      color: #51cf66;
+      text-shadow: 0 0 15px rgba(81, 207, 102, 0.6);
+    }
+
+    /* Пульсирующие кольца с цветовой индикацией */
+    .compass-ring.very-far {
+      border-color: rgba(255, 71, 87, 0.4);
+      animation: pulseRing 2s ease-in-out infinite;
+    }
+
+    .compass-ring.far {
+      border-color: rgba(255, 165, 2, 0.4);
+      animation: pulseRing 2s ease-in-out infinite;
+    }
+
+    .compass-ring.medium {
+      border-color: rgba(255, 215, 0, 0.4);
+      animation: pulseRing 2s ease-in-out infinite;
+    }
+
+    .compass-ring.close {
+      border-color: rgba(81, 207, 102, 0.4);
+      animation: pulseRing 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulseRing {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.7;
+      }
+    }
+
+    .info-panel {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 16px 24px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.8);
+      min-width: 200px;
+      transition: all 0.3s ease;
+    }
+
+    .info-panel:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00d4ff;
+      margin-right: 8px;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    .status-indicator.error {
+      background: #ff6b6b;
+    }
+
+    .status-indicator.success {
+      background: #51cf66;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+      }
+    }
+
+    @keyframes gradientShift {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    @keyframes blink {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    // === РАННЯЯ ИНИЦИАЛИЗАЦИЯ WEBAPP ===
+    (function() {
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+      }
+    })();
+
+    // === УТИЛИТЫ ===
+    function b64urlToStr(b64){
+      b64 = b64.replace(/-/g,'+').replace(/_/g,'/');
+      const pad = b64.length % 4;
+      if (pad) b64 += '='.repeat(4-pad);
+      return atob(b64);
+    }
+
+    function tryDecodePayload(){
+      const sp = new URLSearchParams(location.search);
+      let p = sp.get('p');
+      if (!p && location.hash.startsWith('#')) {
+        p = new URLSearchParams(location.hash.substring(1)).get('p');
+      }
+      if (!p) {
+        return null;
+      }
+
+      try {
+        const json = b64urlToStr(p);
+        const result = JSON.parse(json);
+        return result;
+      } catch(e) {
+        return null;
+      }
+    }
+
+    function toRad(d){ return d*Math.PI/180 }
+    function haversine(lat1, lon1, lat2, lon2){
+      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+      const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      return Math.round(R*c);
+    }
+
+    // === УВЕДОМЛЕНИЕ БОТА ===
+    function notifyBot(uid){
+      if (window.Telegram?.WebApp) {
+        try {
+          window.Telegram.WebApp.ready();
+
+          const data = JSON.stringify({
+                action: 'compass_success',
+                uid: uid,
+            ts: Date.now()
+          });
+
+          if (typeof window.Telegram.WebApp.sendData === 'function') {
+              window.Telegram.WebApp.sendData(data);
+
+              // Ждем немного перед закрытием
+              setTimeout(() => {
+                  window.Telegram.WebApp.close();
+              }, 500);
+          } else {
+          setTimeout(() => window.close(), 1000);
+          }
+        } catch(e){
+          setTimeout(() => window.close(), 1000);
+        }
+      } else {
+        setTimeout(()=>window.close(), 1000);
+      }
+    }
+
+
+    // === DISTANCE COLOR LOGIC ===
+    function updateDistanceColor(distance, radius) {
+      const distEl = document.getElementById('distance');
+      const containerEl = document.querySelector('.compass-container');
+      const ringsEl = document.querySelectorAll('.compass-ring');
+      
+      if (!distEl || !containerEl) return;
+      
+      // Убираем все классы цветов
+      distEl.classList.remove('very-far', 'far', 'medium', 'close');
+      containerEl.classList.remove('very-far', 'far', 'medium', 'close');
+      ringsEl.forEach(ring => {
+        ring.classList.remove('very-far', 'far', 'medium', 'close');
+      });
+      
+      let colorClass = '';
+      if (distance > 2000) {
+        // Больше 2 км - красный
+        colorClass = 'very-far';
+      } else if (distance > 1000) {
+        // От 1 до 2 км - оранжевый
+        colorClass = 'far';
+      } else if (distance > radius) {
+        // От радиуса до 1 км - желтый
+        colorClass = 'medium';
+      } else {
+        // В радиусе - зеленый
+        colorClass = 'close';
+      }
+      
+      // Применяем цветовую индикацию ко всем элементам
+      distEl.classList.add(colorClass);
+      containerEl.classList.add(colorClass);
+      ringsEl.forEach(ring => {
+        ring.classList.add(colorClass);
+      });
+    }
+
+    // === MAIN ===
+    window.addEventListener('DOMContentLoaded', ()=>{
+      
+      const payload = tryDecodePayload();
+
+      const tLat = parseFloat(payload?.lat ?? new URLSearchParams(location.search).get('lat'));
+      const tLon = parseFloat(payload?.lon ?? new URLSearchParams(location.search).get('lon'));
+      const radius = parseInt(payload?.r ?? new URLSearchParams(location.search).get('r') ?? 15, 10);
+      const uid = payload?.uid ?? new URLSearchParams(location.search).get('uid');
+
+      const distEl = document.getElementById('distance');
+      const infoEl = document.getElementById('info');
+      const statusEl = document.getElementById('status');
+
+      if (Number.isNaN(tLat) || Number.isNaN(tLon)){
+        infoEl.innerHTML = '<span class="status-indicator error"></span>Некорректные координаты';
+        return;
+      }
+
+      let fired = false;
+      let lastDistance = null;
+      
+      const onpos = (pos) => {
+        const {latitude, longitude} = pos.coords;
+        const d = haversine(latitude, longitude, tLat, tLon);
+        
+        // Плавная анимация изменения расстояния
+        if (lastDistance !== null && Math.abs(d - lastDistance) > 5) {
+          distEl.style.transform = 'scale(1.1)';
+          setTimeout(() => {
+            distEl.style.transform = 'scale(1)';
+          }, 150);
+        }
+        
+        distEl.textContent = d + " м";
+        updateDistanceColor(d, radius);
+        
+        infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
+        
+        if (!fired && d <= radius) {
+          fired = true;
+          statusEl.innerHTML = '<span class="status-indicator success"></span>Цель достигнута!';
+          distEl.classList.add('close');
+          notifyBot(uid);
+        }
+        
+        lastDistance = d;
+      };
+      
+      const onerr = (err) => { 
+        infoEl.innerHTML = `<span class="status-indicator error"></span>Ошибка геолокации: ${err.message}`;
+      };
+
+      if (!('geolocation' in navigator)) {
+        infoEl.innerHTML = '<span class="status-indicator error"></span>Геолокация не поддерживается';
+        return;
+      }
+
+      // Показываем загрузку
+      infoEl.innerHTML = '<span class="status-indicator"></span>Поиск местоположения...';
+
+      navigator.geolocation.watchPosition(onpos, onerr, {enableHighAccuracy: true});
+      setInterval(() => navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy: true}), 5000);
+    });
+  </script>
+</head>
+<body>
+  <div class="compass-container">
+    <div class="compass-wrapper">
+      <div class="compass-ring"></div>
+      
+      <div class="compass-main">
+        <div class="distance-display" id="distance">— м</div>
+      </div>
+    </div>
+
+    <div class="info-panel" id="info">
+      <span class="status-indicator"></span>Инициализация…
+    </div>
+    
+    <div class="info-panel" id="status" style="display: none;">
+      <span class="status-indicator"></span>Готов к работе
+    </div>
+  </div>
+</body>
+</html>
