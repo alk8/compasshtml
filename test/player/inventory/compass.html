@@ -989,9 +989,20 @@
     let _isSoundOn = false, _isPelengatorOn = false;
     const _soundBtn = document.getElementById('soundBtn');
     const _pelengatorBtn = document.getElementById('pelengatorBtn');
+    const _debugEl = document.getElementById('debug');
     
-    console.log('🔍 Sound button found:', !!_soundBtn);
-    console.log('🔍 Pelengator button found:', !!_pelengatorBtn);
+    // Функция для вывода отладки на экран
+    function debugLog(message) {
+      console.log(message);
+      if (_debugEl) {
+        const time = new Date().toLocaleTimeString();
+        _debugEl.innerHTML = `<span class="status-indicator"></span>[${time}] ${message}`;
+      }
+    }
+    
+    debugLog('🎵 Инициализация звуковой системы...');
+    debugLog(`🔍 Кнопка звука: ${!!_soundBtn ? 'найдена' : 'НЕ найдена'}`);
+    debugLog(`🔍 Кнопка пеленгатора: ${!!_pelengatorBtn ? 'найдена' : 'НЕ найдена'}`);
 
     function _updateSoundButtonUI() {
       _soundBtn.textContent = _isSoundOn ? '🔇 Отключить звук' : '🔊 Включить звук';
@@ -1013,70 +1024,70 @@
     }
 
     function _startOscillatorImmediate() {
-      console.log('🎵 Starting oscillator fallback...');
+      debugLog('🎵 Запуск осциллятора...');
       try {
         if (!_audioCtx) {
-          console.log('🔧 Creating AudioContext...');
+          debugLog('🔧 Создание AudioContext...');
           _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
         
-        console.log('📊 AudioContext state:', _audioCtx.state);
+        debugLog(`📊 Состояние AudioContext: ${_audioCtx.state}`);
         if (_audioCtx.state === "suspended") {
-          console.log('⏸️ Resuming AudioContext...');
+          debugLog('⏸️ Возобновление AudioContext...');
           _audioCtx.resume();
         }
 
-        console.log('🎛️ Creating gain node...');
+        debugLog('🎛️ Создание gain node...');
         _gain = _audioCtx.createGain();
         _gain.gain.value = 0.05;
 
-        console.log('🔊 Creating oscillator...');
+        debugLog('🔊 Создание осциллятора...');
         _osc = _audioCtx.createOscillator();
         _osc.type = "sine";
         _osc.frequency.value = 440;
 
-        console.log('🔗 Connecting nodes...');
+        debugLog('🔗 Подключение узлов...');
         _osc.connect(_gain);
         _gain.connect(_audioCtx.destination);
         
-        console.log('▶️ Starting oscillator...');
+        debugLog('▶️ Запуск осциллятора...');
         _osc.start();
 
         _isSoundOn = true;
         _updateSoundButtonUI();
-        console.log('✅ Oscillator started successfully!');
+        debugLog('✅ Осциллятор запущен успешно!');
       } catch (e) {
-        console.error('❌ Oscillator failed:', e);
+        debugLog(`❌ Ошибка осциллятора: ${e.message}`);
       }
     }
 
     function _soundButtonHandler() {
-      console.log('🔊 Sound button clicked, current state:', _isSoundOn);
+      debugLog(`🔊 Клик по кнопке звука, состояние: ${_isSoundOn}`);
       if (_isSoundOn) { 
-        console.log('🔇 Stopping sound...');
+        debugLog('🔇 Остановка звука...');
         _stopAllAudio(); 
         return; 
       }
 
-      console.log('🔊 Starting sound...');
+      debugLog('🔊 Запуск звука...');
       try {
         const SOUND_URL = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
-        console.log('📡 Creating Audio with URL:', SOUND_URL);
+        debugLog(`📡 Создание Audio: ${SOUND_URL}`);
         _audioEl = new Audio(SOUND_URL);
         _audioEl.loop = true;
         _audioEl.playsInline = true;
         
-        console.log('▶️ Attempting to play audio...');
+        debugLog('▶️ Попытка воспроизведения...');
         _audioEl.play().then(() => {
-          console.log('✅ Audio playing successfully!');
+          debugLog('✅ Звук воспроизводится успешно!');
           _isSoundOn = true;
           _updateSoundButtonUI();
         }).catch(err => {
-          console.warn("❌ Audio play failed, fallback to oscillator:", err);
+          debugLog(`❌ Ошибка воспроизведения: ${err.message}`);
           _startOscillatorImmediate();
         });
       } catch (e) {
-        console.error("❌ Audio creation failed:", e);
+        debugLog(`❌ Ошибка создания Audio: ${e.message}`);
         _startOscillatorImmediate();
       }
     }
@@ -1087,19 +1098,19 @@
       if (_isPelengatorOn && !_isSoundOn) _soundButtonHandler();
     }
 
-    console.log('🔗 Adding event listeners...');
+    debugLog('🔗 Добавление обработчиков событий...');
     if (_soundBtn) {
       _soundBtn.addEventListener("click", _soundButtonHandler);
-      console.log('✅ Sound button listener added');
+      debugLog('✅ Обработчик кнопки звука добавлен');
     } else {
-      console.error('❌ Sound button not found!');
+      debugLog('❌ Кнопка звука НЕ найдена!');
     }
     
     if (_pelengatorBtn) {
       _pelengatorBtn.addEventListener("click", _pelengatorButtonHandler);
-      console.log('✅ Pelengator button listener added');
+      debugLog('✅ Обработчик кнопки пеленгатора добавлен');
     } else {
-      console.error('❌ Pelengator button not found!');
+      debugLog('❌ Кнопка пеленгатора НЕ найдена!');
     }
 
     
@@ -1144,6 +1155,11 @@
 
   <div class="info-panel" id="status" style="display: none;">
     <span class="status-indicator"></span>Готов к работе
+  </div>
+
+  <!-- Отладочная панель -->
+  <div class="info-panel" id="debug" style="background: rgba(255, 0, 0, 0.1); border: 1px solid rgba(255, 0, 0, 0.3);">
+    <span class="status-indicator"></span>Отладка звука
   </div>
 
   <!-- Кнопка включения звука -->
