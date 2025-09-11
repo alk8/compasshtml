@@ -29,6 +29,123 @@
       min-height: 100vh;
       overflow: hidden;
       box-sizing: border-box;
+      position: relative;
+    }
+
+    /* Размытый двигающийся туман */
+    .fog-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.6;
+      transition: all 2s ease-in-out;
+    }
+
+    /* Интенсивность тумана в зависимости от расстояния */
+    .fog-background.very-far {
+      opacity: 0.8;
+    }
+
+    .fog-background.far {
+      opacity: 0.7;
+    }
+
+    .fog-background.medium {
+      opacity: 0.5;
+    }
+
+    .fog-background.close {
+      opacity: 0.3;
+    }
+
+    .fog-layer {
+      position: absolute;
+      width: 150%;
+      height: 150%;
+      background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
+      animation: fogMove 20s ease-in-out infinite;
+      filter: blur(40px);
+    }
+
+    .fog-layer:nth-child(2) {
+      animation-delay: -7s;
+      animation-duration: 25s;
+      background: radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    }
+
+    .fog-layer:nth-child(3) {
+      animation-delay: -14s;
+      animation-duration: 30s;
+      background: radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.07) 0%, transparent 50%),
+                  radial-gradient(circle at 10% 90%, rgba(255, 255, 255, 0.09) 0%, transparent 50%);
+    }
+
+    .fog-layer:nth-child(4) {
+      animation-delay: -21s;
+      animation-duration: 35s;
+      background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.03) 0%, transparent 60%),
+                  radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.04) 0%, transparent 60%),
+                  radial-gradient(circle at 10% 40%, rgba(255, 255, 255, 0.06) 0%, transparent 60%);
+      filter: blur(60px);
+    }
+
+    @keyframes fogMove {
+      0% {
+        transform: translateX(-15%) translateY(-8%) scale(0.95) rotate(0deg);
+      }
+      25% {
+        transform: translateX(8%) translateY(-12%) scale(1.1) rotate(90deg);
+      }
+      50% {
+        transform: translateX(15%) translateY(8%) scale(0.85) rotate(180deg);
+      }
+      75% {
+        transform: translateX(-8%) translateY(12%) scale(1.05) rotate(270deg);
+      }
+      100% {
+        transform: translateX(-15%) translateY(-8%) scale(0.95) rotate(360deg);
+      }
+    }
+
+    /* Цветовые состояния тумана */
+    .fog-background.very-far {
+      /* Серый асфальт - больше 3 км */
+      background: linear-gradient(135deg, 
+        rgba(70, 70, 70, 0.9) 0%, 
+        rgba(50, 50, 50, 0.7) 50%, 
+        rgba(90, 90, 90, 0.8) 100%);
+    }
+
+    .fog-background.far {
+      /* Красный - от 2 до 3 км */
+      background: linear-gradient(135deg, 
+        rgba(220, 20, 60, 0.9) 0%, 
+        rgba(178, 34, 34, 0.7) 50%, 
+        rgba(255, 69, 0, 0.8) 100%);
+    }
+
+    .fog-background.medium {
+      /* Оранжевый/Желтый - от 500м до 2 км */
+      background: linear-gradient(135deg, 
+        rgba(255, 140, 0, 0.9) 0%, 
+        rgba(255, 165, 0, 0.7) 50%, 
+        rgba(255, 215, 0, 0.8) 100%);
+    }
+
+    .fog-background.close {
+      /* Зеленый - от 15м до 500м */
+      background: linear-gradient(135deg, 
+        rgba(34, 139, 34, 0.9) 0%, 
+        rgba(50, 205, 50, 0.7) 50%, 
+        rgba(144, 238, 144, 0.8) 100%);
     }
 
     .compass-container {
@@ -312,34 +429,37 @@
       const distEl = document.getElementById('distance');
       const containerEl = document.querySelector('.compass-container');
       const ringsEl = document.querySelectorAll('.compass-ring');
+      const fogEl = document.getElementById('fogBackground');
       
-      if (!distEl || !containerEl) return;
+      if (!distEl || !containerEl || !fogEl) return;
       
       // Убираем все классы цветов
       distEl.classList.remove('very-far', 'far', 'medium', 'close');
       containerEl.classList.remove('very-far', 'far', 'medium', 'close');
+      fogEl.classList.remove('very-far', 'far', 'medium', 'close');
       ringsEl.forEach(ring => {
         ring.classList.remove('very-far', 'far', 'medium', 'close');
       });
       
       let colorClass = '';
-      if (distance > 2000) {
-        // Больше 2 км - красный
+      if (distance > 3000) {
+        // Больше 3 км - серый асфальт
         colorClass = 'very-far';
-      } else if (distance > 1000) {
-        // От 1 до 2 км - оранжевый
+      } else if (distance > 2000) {
+        // От 2 до 3 км - красный
         colorClass = 'far';
-      } else if (distance > radius) {
-        // От радиуса до 1 км - желтый
+      } else if (distance > 500) {
+        // От 500м до 2 км - оранжевый/желтый
         colorClass = 'medium';
       } else {
-        // В радиусе - зеленый
+        // От 15м до 500м - зеленый
         colorClass = 'close';
       }
       
-      // Применяем цветовую индикацию ко всем элементам
+      // Применяем цветовую индикацию ко всем элементам включая туман
       distEl.classList.add(colorClass);
       containerEl.classList.add(colorClass);
+      fogEl.classList.add(colorClass);
       ringsEl.forEach(ring => {
         ring.classList.add(colorClass);
       });
@@ -412,22 +532,30 @@
   </script>
 </head>
 <body>
-  <div class="compass-container">
-    <div class="compass-wrapper">
-      <div class="compass-ring"></div>
-      
-      <div class="compass-main">
-        <div class="distance-display" id="distance">— м</div>
-      </div>
-    </div>
+<!-- Размытый двигающийся туман -->
+<div class="fog-background" id="fogBackground">
+  <div class="fog-layer"></div>
+  <div class="fog-layer"></div>
+  <div class="fog-layer"></div>
+  <div class="fog-layer"></div>
+</div>
 
-    <div class="info-panel" id="info">
-      <span class="status-indicator"></span>Инициализация…
-    </div>
-    
-    <div class="info-panel" id="status" style="display: none;">
-      <span class="status-indicator"></span>Готов к работе
+<div class="compass-container">
+  <div class="compass-wrapper">
+    <div class="compass-ring"></div>
+
+    <div class="compass-main">
+      <div class="distance-display" id="distance">— м</div>
     </div>
   </div>
+
+  <div class="info-panel" id="info">
+    <span class="status-indicator"></span>Инициализация…
+  </div>
+
+  <div class="info-panel" id="status" style="display: none;">
+    <span class="status-indicator"></span>Готов к работе
+  </div>
+</div>
 </body>
 </html>
