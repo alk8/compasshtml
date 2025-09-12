@@ -1,34 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="theme-color" content="#39d98a"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="format-detection" content="telephone=no"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <!-- Telegram WebApp specific meta tags -->
-  <meta name="telegram:web_app" content="true"/>
-  <meta name="telegram:web_app:version" content="6.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; connect-src 'self' https: wss:;">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Компас с пеленгатором</title>
+
   <!-- Telegram WebApp API -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <title>Компас</title>
+
   <style>
     body {
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-      margin: 0;
-      padding: 20px;
+      font-family: sans-serif; 
+      text-align: center; 
+      margin: 20px; 
       background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
       color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
       min-height: 100vh;
       overflow: hidden;
-      box-sizing: border-box;
+    }
+
+    /* Размытый двигающийся туман */
+    .fog-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.6;
+      transition: all 2s ease-in-out, background 1s ease;
+    }
+
+    .fog-layer {
+      position: absolute;
+      width: 150%;
+      height: 150%;
+      background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
+      animation: fogMove 20s ease-in-out infinite;
+      filter: blur(40px);
+    }
+
+    .fog-layer:nth-child(2) {
+      animation-delay: -7s;
+      animation-duration: 25s;
+    }
+
+    .fog-layer:nth-child(3) {
+      animation-delay: -14s;
+      animation-duration: 30s;
+    }
+
+    .fog-layer:nth-child(4) {
+      animation-delay: -21s;
+      animation-duration: 35s;
+      filter: blur(60px);
+    }
+
+    @keyframes fogMove {
+      0% { transform: translateX(-15%) translateY(-8%) scale(0.95) rotate(0deg); }
+      25% { transform: translateX(8%) translateY(-12%) scale(1.1) rotate(90deg); }
+      50% { transform: translateX(15%) translateY(8%) scale(0.85) rotate(180deg); }
+      75% { transform: translateX(-8%) translateY(12%) scale(1.05) rotate(270deg); }
+      100% { transform: translateX(-15%) translateY(-8%) scale(0.95) rotate(360deg); }
     }
 
     .compass-container {
@@ -37,6 +72,172 @@
       flex-direction: column;
       align-items: center;
       gap: 20px;
+      margin-top: 8vh;
+    }
+
+    /* Волновые эффекты */
+    .wave-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px;
+      height: 400px;
+      pointer-events: none;
+    }
+
+    .wave {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 3px solid rgba(0, 212, 255, 0.7);
+      border-radius: 50%;
+      opacity: 0;
+      animation: complexWaveExpand 4s ease-out infinite;
+      transition: border-color 1s ease;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    .wave:nth-child(1) { 
+      animation-delay: 0s; 
+      border-color: rgba(0, 212, 255, 0.9);
+      animation-name: complexWaveExpand1;
+    }
+    .wave:nth-child(2) { 
+      animation-delay: 0.8s; 
+      border-color: rgba(0, 150, 255, 0.7);
+      animation-name: complexWaveExpand2;
+    }
+    .wave:nth-child(3) { 
+      animation-delay: 1.6s; 
+      border-color: rgba(0, 212, 255, 0.5);
+      animation-name: complexWaveExpand3;
+    }
+    .wave:nth-child(4) { 
+      animation-delay: 2.4s; 
+      border-color: rgba(0, 150, 255, 0.3);
+      animation-name: complexWaveExpand4;
+    }
+    .wave:nth-child(5) { 
+      animation-delay: 3.2s; 
+      border-color: rgba(0, 212, 255, 0.2);
+      animation-name: complexWaveExpand5;
+    }
+
+    @keyframes complexWaveExpand1 {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+      }
+      30% {
+        opacity: 0.7;
+        transform: translate(-50%, -50%) scale(1.2) rotate(120deg);
+      }
+      70% { 
+        opacity: 0.4;
+        transform: translate(-50%, -50%) scale(1.8) rotate(240deg);
+      }
+      100% {
+        width: 350px;
+        height: 350px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2.2) rotate(360deg);
+      }
+    }
+
+    @keyframes complexWaveExpand2 {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(0.3) rotate(45deg);
+      }
+      25% {
+        opacity: 0.6;
+        transform: translate(-50%, -50%) scale(1.0) rotate(180deg);
+      }
+      60% { 
+        opacity: 0.3;
+        transform: translate(-50%, -50%) scale(1.6) rotate(300deg);
+      }
+      100% {
+        width: 320px;
+        height: 320px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2.0) rotate(450deg);
+      }
+    }
+
+    @keyframes complexWaveExpand3 {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 0.7;
+        transform: translate(-50%, -50%) scale(0.4) rotate(90deg);
+      }
+      35% {
+        opacity: 0.5;
+        transform: translate(-50%, -50%) scale(1.1) rotate(200deg);
+      }
+      65% { 
+        opacity: 0.2;
+        transform: translate(-50%, -50%) scale(1.7) rotate(320deg);
+      }
+      100% {
+        width: 300px;
+        height: 300px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.9) rotate(450deg);
+      }
+    }
+
+    @keyframes complexWaveExpand4 {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 0.6;
+        transform: translate(-50%, -50%) scale(0.6) rotate(135deg);
+      }
+      40% {
+        opacity: 0.4;
+        transform: translate(-50%, -50%) scale(1.3) rotate(250deg);
+      }
+      70% { 
+        opacity: 0.2;
+        transform: translate(-50%, -50%) scale(1.8) rotate(380deg);
+      }
+      100% {
+        width: 280px;
+        height: 280px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2.1) rotate(540deg);
+      }
+    }
+
+    @keyframes complexWaveExpand5 {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 0.5;
+        transform: translate(-50%, -50%) scale(0.7) rotate(180deg);
+      }
+      30% {
+        opacity: 0.3;
+        transform: translate(-50%, -50%) scale(1.4) rotate(300deg);
+      }
+      65% { 
+        opacity: 0.1;
+        transform: translate(-50%, -50%) scale(1.9) rotate(450deg);
+      }
+      100% {
+        width: 260px;
+        height: 260px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2.3) rotate(630deg);
+      }
     }
 
     .compass-wrapper {
@@ -76,13 +277,6 @@
       transition: all 0.3s ease;
     }
 
-    .compass-main:hover {
-      transform: scale(1.02);
-      box-shadow: 
-        0 0 40px rgba(0, 150, 255, 0.4),
-        inset 0 0 40px rgba(255, 255, 255, 0.15);
-    }
-
     .distance-display {
       font-size: 36px;
       font-weight: 300;
@@ -97,57 +291,25 @@
       transition: all 0.3s ease;
     }
 
-    /* Элегантная цветовая индикация расстояния */
-    .distance-display.very-far {
-      color: #ff4757;
-      text-shadow: 0 0 15px rgba(255, 71, 87, 0.6);
+    /* Плавные переходы для динамических цветов */
+    .distance-display {
+      transition: color 1s ease, text-shadow 1s ease;
     }
-
-    .distance-display.far {
-      color: #ffa502;
-      text-shadow: 0 0 15px rgba(255, 165, 2, 0.6);
+    .compass-ring {
+      transition: border-color 1s ease;
     }
-
-    .distance-display.medium {
-      color: #ffd700;
-      text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-    }
-
-    .distance-display.close {
-      color: #51cf66;
-      text-shadow: 0 0 15px rgba(81, 207, 102, 0.6);
-    }
-
-    /* Пульсирующие кольца с цветовой индикацией */
-    .compass-ring.very-far {
-      border-color: rgba(255, 71, 87, 0.4);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-ring.far {
-      border-color: rgba(255, 165, 2, 0.4);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-ring.medium {
-      border-color: rgba(255, 215, 0, 0.4);
-      animation: pulseRing 2s ease-in-out infinite;
-    }
-
-    .compass-ring.close {
-      border-color: rgba(81, 207, 102, 0.4);
-      animation: pulseRing 1.5s ease-in-out infinite;
+    .wave {
+      transition: border-color 1s ease;
     }
 
     @keyframes pulseRing {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 0.3;
-      }
-      50% {
-        transform: scale(1.1);
-        opacity: 0.7;
-      }
+      0%, 100% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
     }
 
     .info-panel {
@@ -164,11 +326,6 @@
       transition: all 0.3s ease;
     }
 
-    .info-panel:hover {
-      background: rgba(255, 255, 255, 0.08);
-      transform: translateY(-2px);
-    }
-
     .status-indicator {
       display: inline-block;
       width: 8px;
@@ -179,67 +336,57 @@
       animation: blink 2s ease-in-out infinite;
     }
 
-    .status-indicator.error {
-      background: #ff6b6b;
-    }
-
-    .status-indicator.success {
-      background: #51cf66;
-      animation: none;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 0.3;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.6;
-        transform: scale(1.05);
-      }
-    }
-
-    @keyframes gradientShift {
-      0%, 100% {
-        background-position: 0% 50%;
-      }
-      50% {
-        background-position: 100% 50%;
-      }
-    }
+    .status-indicator.error { background: #ff6b6b; }
+    .status-indicator.success { background: #51cf66; animation: none; }
 
     @keyframes blink {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.3;
-      }
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
 
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-top: 3px solid #00d4ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
   </style>
+</head>
+<body>
+  <!-- Размытый двигающийся туман -->
+  <div class="fog-background" id="fogBackground">
+    <div class="fog-layer"></div>
+    <div class="fog-layer"></div>
+    <div class="fog-layer"></div>
+    <div class="fog-layer"></div>
+  </div>
+
+  <div class="compass-container">
+    <div class="compass-wrapper">
+      <!-- Волновые эффекты -->
+      <div class="wave-container" id="waveContainer">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+      </div>
+
+      <div class="compass-ring"></div>
+
+      <div class="compass-main">
+        <div class="distance-display" id="distance">— м</div>
+      </div>
+    </div>
+
+    <div class="info-panel" id="info">
+      <span class="status-indicator"></span>Инициализация…
+    </div>
+
+    <div class="info-panel" id="status" style="display: none;">
+      <span class="status-indicator"></span>Готов к работе
+    </div>
+
+  </div>
+
   <script>
-    // === РАННЯЯ ИНИЦИАЛИЗАЦИЯ WEBAPP ===
-    (function() {
-      if (window.Telegram && window.Telegram.WebApp) {
-        window.Telegram.WebApp.ready();
-      }
-    })();
+    // Telegram WebApp init
+    const tg = window.Telegram.WebApp;
+    tg.expand();
 
     // === УТИЛИТЫ ===
     function b64urlToStr(b64){
@@ -299,51 +446,167 @@
           setTimeout(() => window.close(), 1000);
           }
         } catch(e){
-          setTimeout(() => window.close(), 1000);
-        }
-      } else {
+              setTimeout(() => window.close(), 1000);
+            }
+          } else {
         setTimeout(()=>window.close(), 1000);
       }
     }
 
+    // === PULSE WAVE EFFECT ===
+    function createPulseWave() {
+      const waveContainer = document.getElementById('waveContainer');
+      if (!waveContainer) return;
+      
+      const pulseWave = document.createElement('div');
+      pulseWave.className = 'wave pulse-wave';
+      pulseWave.style.animation = 'complexWaveExpand1 2.5s ease-out forwards';
+      pulseWave.style.animationDelay = '0s';
+      pulseWave.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+      pulseWave.style.borderWidth = '2px';
+      pulseWave.style.boxShadow = '0 0 25px rgba(255, 255, 255, 0.4)';
+      
+      waveContainer.appendChild(pulseWave);
+      
+      setTimeout(() => {
+        if (pulseWave.parentNode) {
+          waveContainer.removeChild(pulseWave);
+        }
+      }, 2500);
+    }
+
+    // === SUCCESS WAVES EFFECT ===
+    function createSuccessWaves() {
+      const waveContainer = document.getElementById('waveContainer');
+      if (!waveContainer) return;
+      
+      const animations = ['complexWaveExpand1', 'complexWaveExpand2', 'complexWaveExpand3', 'complexWaveExpand4', 'complexWaveExpand5'];
+      const colors = [
+        'rgba(50, 205, 50, 0.9)',
+        'rgba(34, 197, 94, 0.8)',
+        'rgba(16, 185, 129, 0.7)',
+        'rgba(5, 150, 105, 0.6)',
+        'rgba(4, 120, 87, 0.5)'
+      ];
+      
+      for (let i = 0; i < 8; i++) {
+        const successWave = document.createElement('div');
+        successWave.className = 'wave success-wave';
+        successWave.style.animation = `${animations[i % animations.length]} 3s ease-out forwards`;
+        successWave.style.animationDelay = `${i * 0.15}s`;
+        successWave.style.borderColor = colors[i % colors.length];
+        successWave.style.borderWidth = '4px';
+        successWave.style.boxShadow = `0 0 30px ${colors[i % colors.length]}`;
+        
+        waveContainer.appendChild(successWave);
+        
+        setTimeout(() => {
+          if (successWave.parentNode) {
+            waveContainer.removeChild(successWave);
+          }
+        }, 3000 + (i * 150));
+      }
+    }
+
+    // === ЦВЕТОВАЯ ИНТЕРПОЛЯЦИЯ ===
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    function interpolateColor(color1, color2, factor) {
+      const rgb1 = hexToRgb(color1);
+      const rgb2 = hexToRgb(color2);
+      
+      if (!rgb1 || !rgb2) return color1;
+      
+      const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * factor);
+      const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * factor);
+      const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * factor);
+      
+      return rgbToHex(r, g, b);
+    }
+
+    function getDistanceColor(distance) {
+      // Цветовые точки: красный -> оранжевый -> желтый -> зеленый (более насыщенные)
+      const colorPoints = [
+        { distance: 3000, color: '#dc2626' }, // Насыщенный красный
+        { distance: 2000, color: '#ea580c' }, // Насыщенный оранжевый  
+        { distance: 500, color: '#eab308' },  // Насыщенный желтый
+        { distance: 0, color: '#16a34a' }     // Насыщенный зеленый
+      ];
+      
+      // Если расстояние больше максимального - возвращаем красный
+      if (distance >= colorPoints[0].distance) {
+        return colorPoints[0].color;
+      }
+      
+      // Находим две ближайшие цветовые точки
+      for (let i = 0; i < colorPoints.length - 1; i++) {
+        const point1 = colorPoints[i];
+        const point2 = colorPoints[i + 1];
+        
+        if (distance >= point2.distance && distance <= point1.distance) {
+          // Вычисляем коэффициент интерполяции
+          const range = point1.distance - point2.distance;
+          const position = distance - point2.distance;
+          const factor = position / range;
+          
+          // Интерполируем цвет
+          return interpolateColor(point2.color, point1.color, factor);
+        }
+      }
+      
+      // Если расстояние меньше минимального - возвращаем зеленый
+      return colorPoints[colorPoints.length - 1].color;
+    }
 
     // === DISTANCE COLOR LOGIC ===
     function updateDistanceColor(distance, radius) {
       const distEl = document.getElementById('distance');
-      const containerEl = document.querySelector('.compass-container');
       const ringsEl = document.querySelectorAll('.compass-ring');
+      const fogEl = document.getElementById('fogBackground');
+      const waveEl = document.getElementById('waveContainer');
       
-      if (!distEl || !containerEl) return;
+      if (!distEl || !fogEl || !waveEl) return;
       
-      // Убираем все классы цветов
-      distEl.classList.remove('very-far', 'far', 'medium', 'close');
-      containerEl.classList.remove('very-far', 'far', 'medium', 'close');
+      // Получаем цвет на основе расстояния
+      const color = getDistanceColor(distance);
+      const rgb = hexToRgb(color);
+      
+      // Применяем цвет к тексту расстояния (более насыщенно)
+      distEl.style.color = color;
+      distEl.style.textShadow = `0 0 25px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`;
+      
+      // Применяем цвет к кольцам компаса (более насыщенно)
       ringsEl.forEach(ring => {
-        ring.classList.remove('very-far', 'far', 'medium', 'close');
+        ring.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+        ring.style.boxShadow = `0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
       });
       
-      let colorClass = '';
-      if (distance > 2000) {
-        // Больше 2 км - красный
-        colorClass = 'very-far';
-      } else if (distance > 1000) {
-        // От 1 до 2 км - оранжевый
-        colorClass = 'far';
-      } else if (distance > radius) {
-        // От радиуса до 1 км - желтый
-        colorClass = 'medium';
-      } else {
-        // В радиусе - зеленый
-        colorClass = 'close';
-      }
-      
-      // Применяем цветовую индикацию ко всем элементам
-      distEl.classList.add(colorClass);
-      containerEl.classList.add(colorClass);
-      ringsEl.forEach(ring => {
-        ring.classList.add(colorClass);
+      // Применяем цвет к волнам (более насыщенно)
+      const waves = waveEl.querySelectorAll('.wave');
+      waves.forEach(wave => {
+        wave.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+        wave.style.boxShadow = `0 0 15px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
       });
+      
+      // Применяем цвет к туману (более насыщенный градиент)
+      const alpha = Math.min(0.8, Math.max(0.4, 0.8 - (distance / 3000)));
+      fogEl.style.background = `linear-gradient(135deg, 
+        rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha}) 0%, 
+        rgba(${Math.round(rgb.r * 0.8)}, ${Math.round(rgb.g * 0.8)}, ${Math.round(rgb.b * 0.8)}, ${alpha * 0.9}) 50%, 
+        rgba(${Math.round(rgb.r * 1.1)}, ${Math.round(rgb.g * 1.1)}, ${Math.round(rgb.b * 1.1)}, ${alpha * 0.95}) 100%)`;
     }
+
 
     // === MAIN ===
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -372,15 +635,18 @@
         const d = haversine(latitude, longitude, tLat, tLon);
         
         // Плавная анимация изменения расстояния
-        if (lastDistance !== null && Math.abs(d - lastDistance) > 5) {
+        if (lastDistance !== null && Math.abs(d - lastDistance) > 10) {
           distEl.style.transform = 'scale(1.1)';
           setTimeout(() => {
             distEl.style.transform = 'scale(1)';
           }, 150);
+          
+          createPulseWave();
         }
         
         distEl.textContent = d + " м";
         updateDistanceColor(d, radius);
+        
         
         infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
         
@@ -388,6 +654,11 @@
           fired = true;
           statusEl.innerHTML = '<span class="status-indicator success"></span>Цель достигнута!';
           distEl.classList.add('close');
+          
+          // Создаем взрыв волн при достижении цели
+          createSuccessWaves();
+          
+          
           notifyBot(uid);
         }
         
@@ -410,24 +681,5 @@
       setInterval(() => navigator.geolocation.getCurrentPosition(onpos, onerr, {enableHighAccuracy: true}), 5000);
     });
   </script>
-</head>
-<body>
-  <div class="compass-container">
-    <div class="compass-wrapper">
-      <div class="compass-ring"></div>
-      
-      <div class="compass-main">
-        <div class="distance-display" id="distance">— м</div>
-      </div>
-    </div>
-
-    <div class="info-panel" id="info">
-      <span class="status-indicator"></span>Инициализация…
-    </div>
-    
-    <div class="info-panel" id="status" style="display: none;">
-      <span class="status-indicator"></span>Готов к работе
-    </div>
-  </div>
 </body>
 </html>
