@@ -81,8 +81,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 250px;
-      height: 250px;
+      width: 200px;
+      height: 200px;
       pointer-events: none;
     }
 
@@ -114,8 +114,8 @@
         opacity: 0.4; 
       }
       100% {
-        width: 250px;
-        height: 250px;
+        width: 200px;
+        height: 200px;
         opacity: 0;
       }
     }
@@ -224,36 +224,6 @@
       50% { opacity: 0.3; }
     }
 
-    /* Кнопка активации пеленгатора */
-    .pelengator-button {
-      background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(0, 150, 255, 0.3) 100%);
-      border: 2px solid rgba(0, 212, 255, 0.5);
-      border-radius: 25px;
-      padding: 12px 24px;
-      color: #ffffff;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
-      text-align: center;
-      min-width: 200px;
-    }
-
-    .pelengator-button:hover {
-      background: linear-gradient(135deg, rgba(0, 212, 255, 0.3) 0%, rgba(0, 150, 255, 0.4) 100%);
-      border-color: rgba(0, 212, 255, 0.7);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
-    }
-
-    .pelengator-button.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: linear-gradient(135deg, rgba(128, 128, 128, 0.2) 0%, rgba(100, 100, 100, 0.3) 100%);
-      border-color: rgba(128, 128, 128, 0.3);
-    }
   </style>
 </head>
 <body>
@@ -290,10 +260,6 @@
       <span class="status-indicator"></span>Готов к работе
     </div>
 
-    <!-- Кнопка активации пеленгатора -->
-    <button class="pelengator-button" id="pelengatorBtn">
-      🔊 Активировать пеленгатор
-    </button>
   </div>
 
   <script>
@@ -509,246 +475,6 @@
         rgba(${Math.round(rgb.r * 1.1)}, ${Math.round(rgb.g * 1.1)}, ${Math.round(rgb.b * 1.1)}, ${alpha * 0.95}) 100%)`;
     }
 
-    // ---------------- Звук ----------------
-    let _audioEl = null, _audioCtx = null, _osc = null, _gain = null;
-    let _isSoundOn = false, _isPelengatorOn = false;
-    const _pelengatorBtn = document.getElementById('pelengatorBtn');
-
-    function _updatePelengatorButtonUI() {
-      _pelengatorBtn.textContent = _isPelengatorOn ? '🔇 Отключить пеленгатор' : '🔊 Активировать пеленгатор';
-      _pelengatorBtn.classList.toggle('disabled', _isPelengatorOn);
-    }
-
-    function _stopAllAudio() {
-      try {
-        if (_audioEl) { _audioEl.pause(); _audioEl = null; }
-        if (_osc) { _osc.stop(); _osc.disconnect(); _osc = null; }
-        if (_gain) { _gain.disconnect(); _gain = null; }
-        if (_pelengatorTimer) { clearInterval(_pelengatorTimer); _pelengatorTimer = null; }
-      } catch(e) { console.warn(e); }
-      _isSoundOn = false;
-      _isPelengatorOn = false; // Добавляем сброс состояния пеленгатора
-      _lastPelengatorTime = 0; // Сбрасываем таймер пеленгатора
-      _updatePelengatorButtonUI();
-    }
-
-    function _startOscillatorImmediate() {
-      if (!_audioCtx) {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      
-      // Принудительно активируем AudioContext
-      const activateAudio = () => {
-        if (_audioCtx.state === "suspended") {
-          return _audioCtx.resume();
-        }
-        return Promise.resolve();
-      };
-      
-      activateAudio().then(() => {
-        console.log("AudioContext готов, создаем осциллятор");
-        
-        _gain = _audioCtx.createGain();
-        _gain.gain.value = 0; // Начинаем с нулевой громкости
-
-        _osc = _audioCtx.createOscillator();
-        _osc.type = "sine";
-        _osc.frequency.value = 440;
-
-        _osc.connect(_gain);
-        _gain.connect(_audioCtx.destination);
-        _osc.start();
-
-        _isSoundOn = true;
-        _updatePelengatorButtonUI();
-        
-        console.log("Осциллятор запущен, звук готов");
-      }).catch(e => {
-        console.error("Ошибка активации звука:", e);
-      });
-    }
-
-    // Переменные для управления таймером пеленгатора
-    let _pelengatorTimer = null;
-    let _lastPelengatorTime = 0;
-    let _currentDistance = 0;
-    let _currentRadius = 15;
-
-    // Функция для создания одного писка пеленгатора
-    function createPelengatorBeep(distance, radius) {
-      if (!_osc || !_gain) {
-        console.log("Пеленгатор: осциллятор или гейн не готовы");
-        return;
-      }
-
-      console.log(`Создаем писк пеленгатора: расстояние ${distance}м, радиус ${radius}м`);
-      
-      // Создаем короткий писк с текущими параметрами звука
-      try {
-        const currentTime = _audioCtx.currentTime;
-        
-        // Быстро включаем звук (громкость уже установлена в updateSoundParameters)
-        _gain.gain.cancelScheduledValues(currentTime);
-        _gain.gain.setValueAtTime(0, currentTime);
-        _gain.gain.linearRampToValueAtTime(_gain.gain.value, currentTime + 0.02);
-        
-        // Частота уже установлена в updateSoundParameters, не изменяем её
-        
-        // Быстро выключаем звук через 150мс
-        _gain.gain.linearRampToValueAtTime(0, currentTime + 0.15);
-      } catch (e) {
-        console.warn("Ошибка создания писка пеленгатора:", e);
-      }
-    }
-
-    // Функция для запуска таймера пеленгатора
-    function startPelengatorTimer() {
-      if (_pelengatorTimer) {
-        clearInterval(_pelengatorTimer);
-      }
-      
-      // Вычисляем интервал между писками: от 3000мс на 1000м до 200мс на 25м
-      let interval;
-      if (_currentDistance <= 25) {
-        interval = 200; // 25м - очень часто (5 писков в секунду)
-      } else if (_currentDistance <= 1000) {
-        // Пропорциональное уменьшение от 200мс до 3000мс
-        const progress = (1000 - _currentDistance) / (1000 - 25); // от 0 до 1
-        interval = 200 + (3000 - 200) * (1 - progress);
-      } else {
-        interval = 3000; // Больше 1000м - медленно (1 писк в 3 секунды)
-      }
-      
-      console.log(`Пеленгатор: расстояние ${_currentDistance}м, интервал ${interval}мс`);
-      
-      _pelengatorTimer = setInterval(() => {
-        if (_isPelengatorOn) {
-          console.log(`Таймер пеленгатора: создаем писк через ${interval}мс`);
-          createPelengatorBeep(_currentDistance, _currentRadius);
-        } else {
-          console.log("Пеленгатор выключен, останавливаем таймер");
-          clearInterval(_pelengatorTimer);
-          _pelengatorTimer = null;
-        }
-      }, interval);
-    }
-
-    // Функция для обновления параметров звука пеленгатора на основе расстояния
-    function updatePelengatorSound(distance, radius) {
-      if (!_isPelengatorOn || !_osc || !_gain) return;
-      
-      // Сохраняем текущие значения
-      _currentDistance = distance;
-      _currentRadius = radius;
-      
-      // Обновляем параметры звука в реальном времени
-      updateSoundParameters(distance, radius);
-      
-      // Перезапускаем таймер с новым интервалом
-      startPelengatorTimer();
-    }
-
-    // Функция для обновления параметров звука в реальном времени
-    function updateSoundParameters(distance, radius) {
-      if (!_osc || !_gain) return;
-      
-      // Вычисляем громкость: чем ближе к цели, тем громче
-      let volume;
-      if (distance <= radius) {
-        volume = 0.15; // В радиусе - максимальная громкость
-      } else if (distance <= radius * 2) {
-        volume = 0.12; // Близко - высокая громкость
-      } else if (distance <= radius * 3) {
-        volume = 0.08; // Средне - средняя громкость
-      } else if (distance <= radius * 5) {
-        volume = 0.05; // Далеко - низкая громкость
-      } else {
-        volume = 0.02; // Очень далеко - минимальная громкость
-      }
-      
-      // Вычисляем частоту: чем ближе к цели, тем выше частота
-      let frequency;
-      if (distance <= radius) {
-        frequency = 1200; // В радиусе - высокий тон
-      } else if (distance <= radius * 2) {
-        frequency = 900; // Близко - средний-высокий тон
-      } else if (distance <= radius * 3) {
-        frequency = 600; // Средне - средний тон
-      } else if (distance <= radius * 5) {
-        frequency = 400; // Далеко - низкий тон
-      } else {
-        frequency = 250; // Очень далеко - очень низкий тон
-      }
-      
-      // Обновляем параметры звука
-      try {
-        const currentTime = _audioCtx.currentTime;
-        
-        // Плавно изменяем громкость
-        _gain.gain.cancelScheduledValues(currentTime);
-        _gain.gain.setValueAtTime(_gain.gain.value, currentTime);
-        _gain.gain.linearRampToValueAtTime(volume, currentTime + 0.1);
-        
-        // Плавно изменяем частоту
-        _osc.frequency.cancelScheduledValues(currentTime);
-        _osc.frequency.setValueAtTime(_osc.frequency.value, currentTime);
-        _osc.frequency.linearRampToValueAtTime(frequency, currentTime + 0.1);
-        
-        console.log(`Обновляем звук: расстояние ${distance}м, громкость ${volume.toFixed(3)}, частота ${frequency}Hz`);
-      } catch (e) {
-        console.warn("Ошибка обновления параметров звука:", e);
-      }
-    }
-
-    function _soundButtonHandler() {
-      if (_isSoundOn) { _stopAllAudio(); return; }
-
-      try {
-        const SOUND_URL = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
-        _audioEl = new Audio(SOUND_URL);
-        _audioEl.loop = true;
-        _audioEl.playsInline = true;
-        _audioEl.play().then(() => {
-          _isSoundOn = true;
-          _updatePelengatorButtonUI();
-        }).catch(err => {
-          console.warn("Fallback to oscillator:", err);
-          _startOscillatorImmediate();
-        });
-      } catch (e) {
-        _startOscillatorImmediate();
-      }
-    }
-
-    function _pelengatorButtonHandler() {
-      _isPelengatorOn = !_isPelengatorOn;
-      _updatePelengatorButtonUI();
-      
-      if (_isPelengatorOn && !_isSoundOn) {
-        // Принудительно активируем AudioContext при пользовательском действии
-        if (!_audioCtx) {
-          _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        
-        // Принудительно возобновляем AudioContext если он приостановлен
-        if (_audioCtx.state === "suspended") {
-          _audioCtx.resume().then(() => {
-            console.log("AudioContext активирован");
-            _soundButtonHandler();
-          }).catch(e => {
-            console.error("Ошибка активации AudioContext:", e);
-            _soundButtonHandler(); // Пробуем все равно
-          });
-        } else {
-          _soundButtonHandler();
-        }
-      } else if (!_isPelengatorOn && _isSoundOn) {
-        // Выключаем звук
-        _stopAllAudio();
-      }
-    }
-
-    _pelengatorBtn.addEventListener("click", _pelengatorButtonHandler);
 
     // === MAIN ===
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -789,8 +515,6 @@
         distEl.textContent = d + " м";
         updateDistanceColor(d, radius);
         
-        // Обновляем звук пеленгатора (громкость и частота) на основе расстояния
-        updatePelengatorSound(d, radius);
         
         infoEl.innerHTML = `<span class="status-indicator"></span>Радиус: ${radius} м`;
         
@@ -802,18 +526,6 @@
           // Создаем взрыв волн при достижении цели
           createSuccessWaves();
           
-          // Останавливаем звук при достижении цели
-          if (_isSoundOn) {
-            try {
-              if (_audioEl) { _audioEl.pause(); _audioEl = null; }
-              if (_osc) { _osc.stop(); _osc.disconnect(); _osc = null; }
-              if (_gain) { _gain.disconnect(); _gain = null; }
-            } catch(e) { console.warn(e); }
-            _isSoundOn = false;
-            _isPelengatorOn = false;
-            _pelengatorBtn.textContent = '🔊 Активировать пеленгатор';
-            _pelengatorBtn.classList.remove('disabled');
-          }
           
           notifyBot(uid);
         }
